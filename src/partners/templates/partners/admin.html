@@ -3,63 +3,51 @@
   <head>
     <meta charset="utf-8" />
     <title>Partner Admin</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+      h1 { color: #333; }
+      .back-link { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #2196f3; color: white; text-decoration: none; border-radius: 4px; }
+      .back-link:hover { background: #1976d2; }
+      .info-banner { margin-bottom: 20px; padding: 12px; background: #e3f2fd; border-left: 4px solid #2196f3; }
+      ul { list-style: none; padding: 0; }
+      ul li { margin: 10px 0; }
+      button, a.btn { padding: 8px 16px; margin: 5px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+      button:hover, a.btn:hover { background: #1976d2; }
+      button:disabled { background: #ccc; cursor: not-allowed; }
+      pre { background: #f5f5f5; padding: 12px; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; }
+      input[type="text"], input[type="number"], select { padding: 6px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
   </head>
   <body>
+    <a href="/admin" class="back-link">← Back to Admin Home</a>
     <h1>Partner Admin</h1>
-    <div id="admin_auth">
-      <label for="admin_key">Admin Key:</label>
-      <input type="password" id="admin_key" placeholder="enter admin key" />
-      <button type="button" id="admin_login">Login</button>
-      <button type="button" id="admin_logout" style="display:none;">Logout</button>
-      <span id="admin_msg" style="margin-left:1em;color:#444"></span>
+    <div class="info-banner">
+      <strong>Admin Access:</strong> You are logged in as an administrator.
     </div>
-    <div id="admin_banner" style="margin-top:1em;padding:8px;border:1px solid #e1e1e1;background:#fff8e1;color:#333;display:none;">
-      <strong id="banner_text">Not logged in — admin actions are disabled</strong>
-    </div>
+    
+    <h2>Quick Links</h2>
     <ul>
-      <li><a href="/partner/contract">Machine-readable contract</a></li>
-      <li><a href="/partner/contract/example">Contract example</a></li>
-      <li><a href="/partner/help">Quickstart / Help</a></li>
-      <li><button id="btn_jobs" type="button" disabled>Jobs (admin only)</button></li>
-      <li><button id="btn_metrics" type="button" disabled>Metrics (admin only)</button></li>
-      <li><button id="btn_audit" type="button" disabled>Audit (admin only)</button></li>
+      <li><a href="/partners/contract">Machine-readable contract</a></li>
+      <li><a href="/partners/contract/example">Contract example</a></li>
+      <li><a href="/partners/help">Quickstart / Help</a></li>
     </ul>
-    <h2>Lookup job</h2>
+    
+    <h2>Admin Operations</h2>
+    <ul>
+      <li><a href="/partners/admin/jobs" class="btn">View Jobs</a></li>
+      <li><a href="/partners/admin/metrics" class="btn">View Metrics</a></li>
+      <li><a href="/partners/admin/audit" class="btn">View Audit Log</a></li>
+    </ul>
+    
+    <h2>Lookup Job</h2>
     <p>
       <label for="job_id">Job ID:</label>
-      <input type="number" id="job_id" min="1" />
+      <input type="number" id="job_id" min="1" placeholder="Enter job ID" />
       <button type="button" id="job_lookup">View Job</button>
     </p>
-    <pre id="job_resp" style="white-space:pre-wrap;border:1px solid #ccc;padding:8px;display:none;"></pre>
+    <pre id="job_resp" style="display:none;"></pre>
+    
     <script>
-      // admin login helper: store a session via posting to server; the server
-      // sets a session cookie on success which is used for subsequent admin requests.
-      const adminLoginBtn = document.getElementById('admin_login');
-      const adminLogoutBtn = document.getElementById('admin_logout');
-      const adminMsg = document.getElementById('admin_msg');
-      adminLoginBtn.addEventListener('click', async function () {
-        const k = document.getElementById('admin_key').value;
-        if (!k) { adminMsg.textContent = 'Enter admin key'; return; }
-        // Include credentials so the browser accepts the Set-Cookie for the session
-        const r = await fetch('/partner/admin/login', {method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin', body: JSON.stringify({admin_key: k})});
-        if (r.status === 200) {
-          adminMsg.textContent = 'Logged in'; adminLogoutBtn.style.display='inline'; adminLoginBtn.style.display='none';
-          // enable admin buttons and hide banner
-          document.getElementById('btn_jobs').disabled = false;
-          document.getElementById('btn_metrics').disabled = false;
-          document.getElementById('btn_audit').disabled = false;
-          document.getElementById('admin_banner').style.display = 'none';
-        } else { adminMsg.textContent = 'Login failed'; }
-      });
-      adminLogoutBtn.addEventListener('click', async function () {
-        await fetch('/partner/admin/logout', {method: 'POST', credentials: 'same-origin'});
-        adminMsg.textContent = 'Logged out'; adminLogoutBtn.style.display='none'; adminLoginBtn.style.display='inline';
-        document.getElementById('btn_jobs').disabled = true;
-        document.getElementById('btn_metrics').disabled = true;
-        document.getElementById('btn_audit').disabled = true;
-        document.getElementById('admin_banner').style.display = 'block';
-      });
-
       const jobBtn = document.getElementById('job_lookup');
       const jobResp = document.getElementById('job_resp');
       jobBtn.addEventListener('click', async function () {
@@ -67,89 +55,37 @@
         if (!id) { alert('Enter a job id'); return; }
         jobResp.style.display = 'none';
         try {
-    // Use the session cookie (if logged in) to access admin-only job endpoint.
-  const r = await fetch(`/partner/jobs/${id}`, { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
+          const r = await fetch(`/partners/jobs/${id}`, { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
           const txt = await r.text();
-          try { const json = JSON.parse(txt); jobResp.textContent = JSON.stringify(json, null, 2); } catch(e) { jobResp.textContent = txt; }
+          try { 
+            const json = JSON.parse(txt); 
+            jobResp.textContent = JSON.stringify(json, null, 2); 
+          } catch(e) { 
+            jobResp.textContent = txt; 
+          }
           jobResp.style.display = 'block';
         } catch (err) {
           jobResp.textContent = 'Request failed: ' + err;
           jobResp.style.display = 'block';
         }
       });
-      // Admin-only navigation helpers: probe endpoint with same-origin credentials
-      // and show a clear 'Authentication failed' message if the server returns 401.
-      function adminNav(buttonId, url) {
-        const btn = document.getElementById(buttonId);
-        if (!btn) return;
-        btn.addEventListener('click', async function () {
-          try {
-            const r = await fetch(url, { method: 'GET', credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-            // If server returns 401, clear failure.
-            if (r.status === 401) {
-              alert('Authentication failed: admin access required');
-              return;
-            }
-            // fetch follows redirects; detect if we were redirected to the login page.
-            // On redirect, response.redirected is true and response.url will point
-            // to the final location (e.g., /partner/admin/login/).
-            try {
-              const loginPath = '/partner/admin/login';
-              if (r.redirected && r.url && r.url.includes(loginPath)) {
-                alert('Authentication failed: admin access required');
-                return;
-              }
-            } catch (e) {
-              // ignore detection errors
-            }
-            // Otherwise navigate to the page (allow HTML page to load)
-            window.location.href = url;
-          } catch (err) {
-            alert('Request failed: ' + err);
-          }
-        });
-      }
-      adminNav('btn_jobs', '/partner/admin/jobs');
-      adminNav('btn_metrics', '/partner/admin/metrics');
-      adminNav('btn_audit', '/partner/admin/audit');
-
-      // On-load: probe whether the session is authenticated. If not, show banner
-      // and keep admin buttons disabled. This avoids accidental navigation.
-      (async function probeAdminSession() {
-        try {
-          const r = await fetch('/partner/admin/metrics', {method: 'GET', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}});
-          if (r.status === 200) {
-            // logged in: enable buttons
-            document.getElementById('btn_jobs').disabled = false;
-            document.getElementById('btn_metrics').disabled = false;
-            document.getElementById('btn_audit').disabled = false;
-            document.getElementById('admin_banner').style.display = 'none';
-            adminMsg.textContent = '';
-            adminLogoutBtn.style.display = 'inline';
-            adminLoginBtn.style.display = 'none';
-          } else {
-            document.getElementById('admin_banner').style.display = 'block';
-            document.getElementById('btn_jobs').disabled = true;
-            document.getElementById('btn_metrics').disabled = true;
-            document.getElementById('btn_audit').disabled = true;
-          }
-        } catch (e) {
-          // network error: show banner but keep non-destructive behavior
-          document.getElementById('admin_banner').style.display = 'block';
-        }
-      })();
     </script>
-    <h2>Onboard partner</h2>
+    
+    <h2>Onboard Partner</h2>
     <p>
       <label for="on_name">Partner name:</label>
       <input type="text" id="on_name" placeholder="Acme Partner" />
       <label for="on_format">Format:</label>
-      <select id="on_format"><option value="json">json</option><option value="csv">csv</option></select>
+      <select id="on_format">
+        <option value="json">json</option>
+        <option value="csv">csv</option>
+      </select>
       <label for="on_desc">Description:</label>
       <input type="text" id="on_desc" placeholder="description" />
       <button type="button" id="on_btn">Create Partner</button>
     </p>
-    <pre id="on_resp" style="white-space:pre-wrap;border:1px solid #ccc;padding:8px;display:none;"></pre>
+    <pre id="on_resp" style="display:none;"></pre>
+    
     <script>
       const onBtn = document.getElementById('on_btn');
       const onResp = document.getElementById('on_resp');
@@ -160,12 +96,19 @@
         if (!name) { alert('Enter partner name'); return; }
         onResp.style.display = 'none';
         try {
-          const r = await fetch('/partner/onboard_form', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+          const r = await fetch('/partners/onboard_form', {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
             body: JSON.stringify({name: name, format: format, description: desc})
           });
           const txt = await r.text();
-          try { const json = JSON.parse(txt); onResp.textContent = JSON.stringify(json, null, 2); } catch(e) { onResp.textContent = txt; }
+          try { 
+            const json = JSON.parse(txt); 
+            onResp.textContent = JSON.stringify(json, null, 2); 
+          } catch(e) { 
+            onResp.textContent = txt; 
+          }
           onResp.style.display = 'block';
         } catch (err) {
           onResp.textContent = 'Request failed: ' + err;

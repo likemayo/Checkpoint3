@@ -1,0 +1,62 @@
+services:
+  # Main Flask application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: checkpoint3-web
+    ports:
+      - "5000:5000"
+    environment:
+      - APP_DB_PATH=/app/data/app.sqlite
+      - APP_SECRET_KEY=${APP_SECRET_KEY:-dev-docker-secret-key-change-in-production}
+      - FLASK_ENV=development
+      - PORT=5000
+    volumes:
+      # Mount database directory for persistence
+      - db-data:/app/data
+      # Mount source code for development (optional, comment out for production)
+      - ./src:/app/src
+      - ./db:/app/db
+      - ./migrations:/app/migrations
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Optional: Background worker for partner ingest queue
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: checkpoint3-worker
+    environment:
+      - APP_DB_PATH=/app/data/app.sqlite
+    volumes:
+      - db-data:/app/data
+      - ./src:/app/src
+      - ./db:/app/db
+      - ./scripts:/app/scripts
+    command: python -c "from src.partners.ingest_queue import start_worker; import os; start_worker(os.environ.get('APP_DB_PATH', '/app/data/app.sqlite')); import time; time.sleep(999999)"
+    networks:
+      - app-network
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Persistent volume for SQLite database
+  db-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

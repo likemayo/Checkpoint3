@@ -3,17 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <title>Partner Jobs (Admin)</title>
-    <style>pre{white-space:pre-wrap;border:1px solid #ccc;padding:8px;}</style>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .back-link { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #2196f3; color: white; text-decoration: none; border-radius: 4px; }
+      .back-link:hover { background: #1976d2; }
+      pre { white-space: pre-wrap; border: 1px solid #ccc; padding: 8px; }
+    </style>
   </head>
   <body>
+    <a href="/partners/admin" class="back-link">← Back to Partner Admin</a>
     <h1>Partner Jobs</h1>
-    <p><a href="/partner/admin">Back</a></p>
     <div id="summary">Loading...</div>
     <div id="jobs_container">Loading jobs...</div>
     <script>
       async function requeueJob(id) {
         try {
-          const r = await fetch(`/partner/jobs/${id}/requeue`, { method: 'POST', credentials: 'same-origin' });
+          const r = await fetch(`/partners/jobs/${id}/requeue`, { method: 'POST', credentials: 'same-origin' });
           if (!r.ok) {
             alert('Requeue failed: ' + r.status);
             return;
@@ -49,7 +54,7 @@
 
       async function load() {
         try {
-          const r = await fetch('/partner/jobs', {credentials: 'same-origin'});
+          const r = await fetch('/partners/jobs', {credentials: 'same-origin'});
           if (!r.ok) {
             document.getElementById('summary').textContent = 'Failed to load jobs: ' + r.status;
             return;

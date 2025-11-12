@@ -1,0 +1,274 @@
+<!doctype html>
+<html>
+<head>
+    <title>Completed RMA Details - {{ rma.rma_number or ('#' ~ rma.id) }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+        .header { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .status { padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: inline-block; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+        .section h2 { margin-top: 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 10px; }
+        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: bold; width: 200px; color: #666; }
+        .info-value { flex: 1; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .back-link { display: inline-block; margin: 15px 0; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .photo { max-width: 300px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .completion-summary { background: #e8f5e9; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0; }
+        .completion-summary.cancelled { background: #ffebee; border-left: 4px solid #f44336; }
+        .completion-summary h3 { margin-top: 0; color: #2e7d32; }
+        .completion-summary.cancelled h3 { color: #c62828; }
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; display: inline-block; }
+        .badge.REFUND { background: #d4edda; color: #155724; }
+        .badge.REPLACEMENT { background: #d1ecf1; color: #0c5460; }
+        .badge.REPAIR { background: #e7e8ea; color: #383d41; }
+        .badge.REJECT { background: #f8d7da; color: #721c24; }
+        .badge.STORE_CREDIT { background: #fff3cd; color: #856404; }
+        .timeline-summary { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .timeline-summary .step { padding: 8px 0; display: flex; align-items: center; }
+        .timeline-summary .step-icon { width: 24px; height: 24px; border-radius: 50%; background: #28a745; color: white; text-align: center; line-height: 24px; margin-right: 12px; font-size: 12px; }
+        .timeline-summary .step-info { flex: 1; }
+        .timeline-summary .step-date { color: #666; font-size: 12px; }
+        .audit-link { background: #1976d2; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; display: inline-block; margin: 10px 0; }
+        .audit-link:hover { background: #1565c0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Completed RMA Details</h1>
+        <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+        <p>Status: <span class="status status-{{ rma.status }}">{{ rma.status }}</span></p>
+        <p style="margin: 5px 0; color: #666;">
+            {% if rma.status == 'COMPLETED' %}
+                This RMA has been successfully completed and closed.
+            {% else %}
+                This RMA has been cancelled.
+            {% endif %}
+        </p>
+    </div>
+    
+    <!-- Completion Summary -->
+    <div class="completion-summary {% if rma.status == 'CANCELLED' %}cancelled{% endif %}">
+        <h3>
+            {% if rma.status == 'COMPLETED' %}
+                ✓ Case Completed Successfully
+            {% else %}
+                ✗ Case Cancelled
+            {% endif %}
+        </h3>
+        <div class="info-row">
+            <div class="info-label">Closed Date:</div>
+            <div class="info-value"><strong>{{ rma.closed_at or 'N/A' }}</strong></div>
+        </div>
+        {% if rma.disposition %}
+        <div class="info-row">
+            <div class="info-label">Final Disposition:</div>
+            <div class="info-value"><span class="badge {{ rma.disposition }}">{{ rma.disposition }}</span></div>
+        </div>
+        {% endif %}
+        {% if rma.disposition_reason %}
+        <div class="info-row">
+            <div class="info-label">Disposition Reason:</div>
+            <div class="info-value">{{ rma.disposition_reason }}</div>
+        </div>
+        {% endif %}
+        {% if rma.refund_amount_cents %}
+        <div class="info-row">
+            <div class="info-label">Amount Processed:</div>
+            <div class="info-value"><strong style="font-size: 18px; color: #2e7d32;">${{ "%.2f"|format(rma.refund_amount_cents / 100.0) }}</strong></div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Timeline Summary -->
+    <div class="section">
+        <h2>Process Timeline</h2>
+        <div class="timeline-summary">
+            <div class="step">
+                <div class="step-icon">1</div>
+                <div class="step-info">
+                    <strong>Submitted</strong>
+                    <div class="step-date">{{ rma.created_at }}</div>
+                </div>
+            </div>
+            {% if rma.validated_at %}
+            <div class="step">
+                <div class="step-icon">2</div>
+                <div class="step-info">
+                    <strong>Validated & Approved</strong>
+                    <div class="step-date">{{ rma.validated_at }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if rma.received_at %}
+            <div class="step">
+                <div class="step-icon">3</div>
+                <div class="step-info">
+                    <strong>Received at Warehouse</strong>
+                    <div class="step-date">{{ rma.received_at }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if rma.inspection_completed_at %}
+            <div class="step">
+                <div class="step-icon">4</div>
+                <div class="step-info">
+                    <strong>Inspection Completed</strong>
+                    <div class="step-date">{{ rma.inspection_completed_at }} - Result: {{ rma.inspection_result }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if rma.disposition_at %}
+            <div class="step">
+                <div class="step-icon">5</div>
+                <div class="step-info">
+                    <strong>Disposition Decision Made</strong>
+                    <div class="step-date">{{ rma.disposition_at }} - {{ rma.disposition }}</div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="step">
+                <div class="step-icon">✓</div>
+                <div class="step-info">
+                    <strong>Case Closed</strong>
+                    <div class="step-date">{{ rma.closed_at or 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+        {% if rma.created_at and rma.closed_at %}
+        <p style="margin-top: 15px; color: #666;">
+            <strong>Total Resolution Time:</strong> 
+            {{ ((rma.closed_at|default('', true)|length > 0) and (rma.created_at|default('', true)|length > 0)) and 
+               "~" ~ ((rma.closed_at.split(' ')[0].split('-')|map('int')|list|last - rma.created_at.split(' ')[0].split('-')|map('int')|list|last)|abs) ~ " days" 
+               or "N/A" }}
+        </p>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Customer Information</h2>
+        <div class="info-row">
+            <div class="info-label">Customer ID:</div>
+            <div class="info-value">{{ rma.user_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Order ID:</div>
+            <div class="info-value">#{{ rma.sale_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Return Reason:</div>
+            <div class="info-value">{{ rma.reason }}</div>
+        </div>
+        {% if rma.description %}
+        <div class="info-row">
+            <div class="info-label">Description:</div>
+            <div class="info-value">{{ rma.description }}</div>
+        </div>
+        {% endif %}
+        {% if rma.photo_url %}
+        <div class="info-row">
+            <div class="info-label">Photo Evidence:</div>
+            <div class="info-value">
+                <img src="{{ rma.photo_url }}" alt="Return photo" class="photo">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Returned Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Price at Purchase</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }} (ID: {{ item.product_id }})</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ "%.2f"|format(item.price_at_purchase or 0) }}</td>
+                    <td>${{ "%.2f"|format((item.price_at_purchase or 0) * item.quantity) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if rma.requested_refund_amount %}
+        <div style="text-align: right; margin-top: 10px; font-size: 16px;">
+            <strong>Total Value: ${{ "%.2f"|format(rma.requested_refund_amount) }}</strong>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if rma.inspection_result %}
+    <div class="section">
+        <h2>Inspection Results</h2>
+        <div class="info-row">
+            <div class="info-label">Result:</div>
+            <div class="info-value"><strong>{{ rma.inspection_result }}</strong></div>
+        </div>
+        {% if rma.inspection_notes %}
+        <div class="info-row">
+            <div class="info-label">Inspector Notes:</div>
+            <div class="info-value">{{ rma.inspection_notes }}</div>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <div class="info-label">Inspected By:</div>
+            <div class="info-value">{{ rma.inspected_by }}{% if rma.inspection_completed_at %} on {{ rma.inspection_completed_at }}{% endif %}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if refund %}
+    <div class="section">
+        <h2>Refund Details</h2>
+        <div class="info-row">
+            <div class="info-label">Refund Amount:</div>
+            <div class="info-value"><strong>${{ "%.2f"|format(refund.amount_cents / 100.0) }}</strong></div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Refund Method:</div>
+            <div class="info-value">{{ refund.method }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Status:</div>
+            <div class="info-value">{{ refund.status }}</div>
+        </div>
+        {% if refund.reference %}
+        <div class="info-row">
+            <div class="info-label">Reference:</div>
+            <div class="info-value">{{ refund.reference }}</div>
+        </div>
+        {% endif %}
+        {% if refund.processed_at %}
+        <div class="info-row">
+            <div class="info-label">Processed:</div>
+            <div class="info-value">{{ refund.processed_at }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="section">
+        <h2>Audit & Compliance</h2>
+        <p>Complete audit trail and activity log available for this RMA case.</p>
+        <a href="/rma/admin/audit-log/{{ rma.id }}" class="audit-link">📋 View Complete Audit Log</a>
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+            <strong>Record Retention:</strong> This RMA record is retained for 7 years from closure date for compliance and dispute resolution purposes.
+        </p>
+    </div>
+    
+    <a href="/rma/admin/completed" class="back-link">← Back to Completed RMAs</a>
+</body>
+</html>

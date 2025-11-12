@@ -26,6 +26,7 @@
   </head>
   <body>
     <h1>Products</h1>
+    <p><a href="/dashboard">← My Dashboard</a> | <a href="/rma/my-returns">My Returns</a> | <a href="/logout">Logout</a></p>
     <form method="get" action="/products" style="margin: 10px 0;">
       <input type="text" name="q" placeholder="Search products by name" value="{{ q or '' }}">
       <button type="submit">Search</button>

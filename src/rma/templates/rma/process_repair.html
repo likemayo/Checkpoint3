@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <title>Process Repair</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+    .header { background: #f5f5f5; padding: 16px; border-radius: 6px; margin-bottom: 16px; }
+    .section { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; background: #fff; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+    th { background: #f5f5f5; }
+    .actions { margin-top: 16px; }
+    .btn { padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; color: #fff; }
+    .btn-primary { background: #1976d2; }
+    .btn-secondary { background: #6c757d; text-decoration: none; }
+    .hint { background: #e7f3ff; border-left: 4px solid #1976d2; padding: 12px; border-radius: 4px; color: #0c5460; }
+    .field { margin: 10px 0; }
+    label { display:block; margin-bottom: 4px; color: #555; }
+    input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <a href="/rma/admin/processing-queue" class="btn btn-secondary">← Back to Processing Queue</a>
+
+  <div class="header">
+    <h1>Process Repair</h1>
+    <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+    <div>Status: <strong>{{ rma.status }}</strong></div>
+    <div>Disposition: <strong>{{ rma.disposition }}</strong></div>
+  </div>
+
+  <div class="section">
+    <h3>Items Being Repaired</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.product_name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>${{ "%.2f"|format(item.price_at_purchase or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="POST" action="/rma/admin/{{ rma.id }}/process-repair">
+    <div class="section">
+      <h3>Repair Details</h3>
+      <div class="field">
+        <label for="repair_center">Repair Center</label>
+        <input type="text" id="repair_center" name="repair_center" placeholder="e.g., Acme Repairs, CA" />
+      </div>
+      <div class="field">
+        <label for="repair_rma">Repair RMA Number</label>
+        <input type="text" id="repair_rma" name="repair_rma" placeholder="Vendor RMA #" />
+      </div>
+      <div class="field">
+        <label for="return_tracking">Return Tracking (to customer)</label>
+        <input type="text" id="return_tracking" name="return_tracking" placeholder="(optional) tracking number upon return" />
+      </div>
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Any additional information"></textarea>
+      </div>
+      <div class="hint">
+        Submitting this form will move the RMA into PROCESSING and log the repair initiation. Inventory is not restored while the item is under repair.
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Initiate Repair</button>
+      <a href="/rma/admin/view-processing/{{ rma.id }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+
+</body>
+</html>

@@ -4,7 +4,8 @@
   <body>
     <h1>Receipt #{{ sale.id }}</h1>
     <p>Date: {{ sale.sale_time }}</p>
-    <p>Status: {{ sale.status }}</p>
+  {% set status_to_show = display_status or sale.status %}
+  <p>Status: {{ status_to_show }}</p>
     <h2>Items</h2>
     <table border="1">
       <tr><th>Product ID</th><th>Product Name</th><th>Qty</th><th>Unit</th></tr>
@@ -22,6 +23,7 @@
     <p>Method: {{ payment.method }}</p>
     <p>Status: {{ payment.status }}</p>
     <p>Ref: {{ payment.ref }}</p>
-    <p><a href="/products">Back to Products</a></p>
+    
+    <p><a href="/dashboard">← Back to My Orders</a> | <a href="/products">Continue Shopping</a></p>
   </body>
   </html>

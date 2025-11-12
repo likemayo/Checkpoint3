@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <title>Complete Repair</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+    .header { background: #f5f5f5; padding: 16px; border-radius: 6px; margin-bottom: 16px; }
+    .section { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; background: #fff; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+    th { background: #f5f5f5; }
+    .actions { margin-top: 16px; }
+    .btn { padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; color: #fff; text-decoration: none; display: inline-block; }
+    .btn-primary { background: #28a745; }
+    .btn-secondary { background: #6c757d; }
+    .hint { background: #d4edda; border-left: 4px solid #28a745; padding: 12px; border-radius: 4px; color: #155724; margin: 16px 0; }
+    .field { margin: 10px 0; }
+    label { display:block; margin-bottom: 4px; color: #555; font-weight: bold; }
+    input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <a href="/rma/admin/processing-queue" class="btn btn-secondary">← Back to Processing Queue</a>
+
+  <div class="header">
+    <h1>Complete Repair</h1>
+    <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+    <div>Status: <strong>{{ rma.status }}</strong> (Repair in Progress)</div>
+    <div>Disposition: <strong>{{ rma.disposition }}</strong></div>
+  </div>
+
+  <div class="hint">
+    The repair is complete. Fill in the return shipping details to send the repaired item back to the customer and close this RMA.
+  </div>
+
+  <div class="section">
+    <h3>Repaired Items</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.product_name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>${{ "%.2f"|format(item.price_at_purchase or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="POST" action="/rma/admin/{{ rma.id }}/complete-repair">
+    <div class="section">
+      <h3>Return Shipping Details</h3>
+      <div class="field">
+        <label for="return_carrier">Return Carrier <span style="color: #999;">(optional)</span></label>
+        <select id="return_carrier" name="return_carrier">
+          <option value="">-- Select Carrier --</option>
+          <option value="UPS">UPS</option>
+          <option value="FedEx">FedEx</option>
+          <option value="USPS">USPS</option>
+          <option value="DHL">DHL</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="return_tracking">Return Tracking Number <span style="color: #999;">(optional)</span></label>
+        <input type="text" id="return_tracking" name="return_tracking" placeholder="e.g., 1Z999AA10123456784" />
+      </div>
+      <div class="field">
+        <label for="notes">Completion Notes <span style="color: #999;">(optional)</span></label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Any additional information about the repair completion"></textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Complete Repair & Return to Customer</button>
+      <a href="/rma/admin/view-processing/{{ rma.id }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+
+</body>
+</html>

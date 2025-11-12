@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <title>Make Disposition Decision</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+    .header { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+    .section { margin: 16px 0; padding: 16px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+    .section h2 { margin-top: 0; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+    label { display:block; margin: 12px 0 4px; font-weight: bold; }
+    select, textarea, input[type=text] { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { margin-top: 12px; padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1565c0; }
+    .note { font-size: 12px; color: #666; margin: 8px 0; }
+    .info-row { padding: 6px 0; border-bottom: 1px solid #eee; }
+    .info-label { font-weight: bold; color: #666; }
+    .info-value { color: #333; margin-left: 8px; }
+    .timeline { margin: 10px 0; max-height: 200px; overflow-y: auto; }
+    .timeline-item { padding: 10px; margin: 6px 0; border-left: 3px solid #1976d2; background: #f9f9f9; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Disposition Decision</h1>
+    <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+    <div>Status: <strong>{{ rma.status }}</strong></div>
+  </div>
+
+  <div class="section">
+    <h2>RMA Summary</h2>
+    <div class="info-row">
+      <span class="info-label">Order ID:</span><span class="info-value">#{{ rma.sale_id }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Reason:</span><span class="info-value">{{ rma.reason }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Inspection Result:</span><span class="info-value"><strong>{{ rma.inspection_result }}</strong></span>
+    </div>
+    {% if rma.inspection_notes %}
+    <div class="info-row">
+      <span class="info-label">Inspection Notes:</span><span class="info-value">{{ rma.inspection_notes }}</span>
+    </div>
+    {% endif %}
+    <div class="info-row">
+      <span class="info-label">Inspected By:</span><span class="info-value">{{ rma.inspected_by }}{% if rma.inspected_at %} on {{ rma.inspected_at }}{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Items</h2>
+    <ul>
+      {% for item in items %}
+        <li>{{ item.product_name }} &times; {{ item.quantity }} @ ${{ '%.2f'|format(item.price_at_purchase) }}</li>
+      {% endfor %}
+    </ul>
+    <div style="font-weight:bold;margin-top:8px;">Total Return Value: ${{ '%.2f'|format(rma.requested_refund_amount) }}</div>
+  </div>
+
+  {% if rma.status in ['INSPECTED', 'DISPOSITION'] %}
+  <div class="section">
+    <h2>Make Disposition Decision</h2>
+    <form method="POST" action="{{ url_for('rma.admin_make_disposition', rma_id=rma.id) }}">
+      <label for="disposition">Disposition *</label>
+      <select id="disposition" name="disposition" required>
+        <option value="">-- Select Decision --</option>
+        <option value="REFUND">REFUND - Full refund to customer</option>
+        <option value="REPLACEMENT">REPLACEMENT - Send replacement item</option>
+        <option value="REPAIR">REPAIR - Repair and return item</option>
+        <option value="STORE_CREDIT">STORE_CREDIT - Issue store credit</option>
+        <option value="REJECT">REJECT - Deny claim (e.g., misuse)</option>
+      </select>
+      
+      <label for="reason">Reason / Notes</label>
+      <textarea id="reason" name="reason" rows="4" placeholder="Explain the decision..."></textarea>
+      
+      <label for="decided_by">Decision Maker</label>
+      <input type="text" id="decided_by" name="decided_by" value="warranty_team" />
+      
+      <button type="submit">Submit Decision</button>
+      <div class="note">Transitions status INSPECTED → DISPOSITION. Next step: Process refund/replacement (Step 6).</div>
+    </form>
+  </div>
+  {% else %}
+  <div class="section">
+    <h2>Disposition</h2>
+    <p>Disposition can only be set when status is INSPECTED.</p>
+    <p>Current status: <strong>{{ rma.status }}</strong></p>
+  </div>
+  {% endif %}
+
+  {% if activity %}
+  <div class="section">
+    <h2>Recent Activity</h2>
+    <div class="timeline">
+      {% for log in activity[:5] %}
+      <div class="timeline-item">
+        <div><strong>{{ log.action }}</strong> — {{ log.created_at }}</div>
+        {% if log.notes %}<div>{{ log.notes }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <p style="margin-top: 16px;">
+    <a href="/rma/admin/disposition-queue">← Back to Disposition Queue</a>
+  </p>
+</body>
+</html>

@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Database files (will be mounted as volumes)
+*.sqlite
+*.sqlite.bak*
+*.db
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Demo files
+demo_run.sh
+tools/
+
+# Temporary files
+*.tmp
+*.temp
+cookies.txt
+sample.csv
+sample.json

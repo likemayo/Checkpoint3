@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <title>RMA Inspection - {{ rma.rma_number or ('RMA #' ~ rma.id) }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+    .back-link { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #2196f3; color: white; text-decoration: none; border-radius: 4px; }
+    .back-link:hover { background: #1976d2; }
+    .header { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+    .section { margin: 16px 0; padding: 16px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+    .status { padding: 4px 10px; border-radius: 4px; display: inline-block; }
+    label { display:block; margin: 8px 0 4px; }
+    input[type=text], select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { margin-top: 12px; padding: 8px 16px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .note { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <a href="/rma/admin/queue" class="back-link">← Back to Inspection Queue</a>
+  
+  <div class="header">
+    <h1>RMA Inspection</h1>
+    <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+    <div>Status: <span class="status">{{ rma.status }}</span></div>
+  </div>
+
+  <div class="section">
+    <h2>RMA Summary</h2>
+    <div><strong>Order ID:</strong> {{ rma.sale_id }}</div>
+    <div><strong>Reason:</strong> {{ rma.reason }}</div>
+    {% if rma.description %}<div><strong>Description:</strong> {{ rma.description }}</div>{% endif %}
+    {% if rma.photo_url %}<div style="margin-top:8px;"><img src="{{ rma.photo_url }}" alt="photo" style="max-width:300px;border:1px solid #ddd;border-radius:4px;"/></div>{% endif %}
+  </div>
+
+  <div class="section">
+    <h2>Items</h2>
+    <ul>
+      {% for item in items %}
+        <li>{{ item.product_name }} &times; {{ item.quantity }} @ ${{ '%.2f'|format(item.price_at_purchase) }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% if rma.status == 'RECEIVED' %}
+  <div class="section">
+    <h2>Start Inspection</h2>
+    <form method="POST" action="{{ url_for('rma.admin_start_inspection', rma_id=rma.id) }}">
+      <label for="inspected_by">Inspector</label>
+      <input type="text" id="inspected_by" name="inspected_by" value="QA" />
+      <button type="submit">Start Inspection</button>
+      <div class="note">Transitions status RECEIVED → INSPECTING.</div>
+    </form>
+  </div>
+  {% elif rma.status == 'INSPECTING' %}
+  <div class="section">
+    <h2>Complete Inspection</h2>
+    <form method="POST" action="{{ url_for('rma.admin_complete_inspection', rma_id=rma.id) }}">
+      <label for="result">Result</label>
+      <select id="result" name="result" required>
+        <option value="">-- Select --</option>
+        <option value="DEFECTIVE">DEFECTIVE</option>
+        <option value="MISUSE">MISUSE</option>
+        <option value="NORMAL_WEAR">NORMAL_WEAR</option>
+        <option value="AS_DESCRIBED">AS_DESCRIBED</option>
+      </select>
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" rows="4" placeholder="Findings, photos, etc."></textarea>
+      <label for="inspected_by">Inspector</label>
+      <input type="text" id="inspected_by" name="inspected_by" value="QA" />
+      <button type="submit">Complete Inspection</button>
+      <div class="note">Transitions status INSPECTING → INSPECTED.</div>
+    </form>
+  </div>
+  {% elif rma.status == 'INSPECTED' %}
+  <div class="section">
+    <h2>Inspection Complete</h2>
+    <div><strong>Result:</strong> {{ rma.inspection_result }}</div>
+    {% if rma.inspection_notes %}<div style="margin-top:8px;"><strong>Notes:</strong> {{ rma.inspection_notes }}</div>{% endif %}
+    <div style="margin-top:8px;"><strong>Inspected by:</strong> {{ rma.inspected_by }}{% if rma.inspected_at %} on {{ rma.inspected_at }}{% endif %}</div>
+    <p style="margin-top:12px;color:#666;">Next: Disposition decision (Step 5)</p>
+  </div>
+  {% else %}
+  <div class="section">
+    <h2>Inspection</h2>
+    <p>Inspection can be started when the RMA is RECEIVED.</p>
+    <p>Current status: <strong>{{ rma.status }}</strong></p>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h2>Activity</h2>
+    <ul>
+      {% for log in activity %}
+        <li>{{ log.created_at }} — {{ log.action }}{% if log.notes %}: {{ log.notes }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <p style="margin-top: 20px;">
+    <a href="/rma/admin/queue" class="back-link">← Back to Inspection Queue</a>
+    <a href="/rma/admin/dashboard" class="back-link" style="margin-left: 10px;">Admin Dashboard</a>
+  </p>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+<head>
+    <title>My Dashboard - {{ username }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
+        
+        /* Navigation */
+        nav { background: #2c3e50; color: white; padding: 1rem 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        nav .container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        nav h1 { font-size: 1.5rem; }
+        nav .nav-links a { color: white; text-decoration: none; margin-left: 1.5rem; padding: 0.5rem 1rem; border-radius: 4px; transition: background 0.3s; }
+        nav .nav-links a:hover { background: #34495e; }
+        
+        /* Main Container */
+        .main-container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+        
+        /* Welcome Section */
+        .welcome { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .welcome h2 { color: #2c3e50; margin-bottom: 0.5rem; }
+        .welcome p { color: #7f8c8d; }
+        
+        /* Stats Cards */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #3498db; }
+        .stat-card.orders { border-left-color: #3498db; }
+        .stat-card.returns { border-left-color: #e67e22; }
+        .stat-card.spent { border-left-color: #2ecc71; }
+        .stat-card h3 { color: #7f8c8d; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .stat-card .number { font-size: 2rem; font-weight: bold; color: #2c3e50; }
+        
+        /* Messages */
+        .success, .error, .info { padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        /* Orders Section */
+        .orders-section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .orders-section h2 { color: #2c3e50; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 2px solid #ecf0f1; margin-bottom: 1.5rem; }
+        .tab { padding: 1rem 1.5rem; cursor: pointer; border: none; background: none; color: #7f8c8d; font-size: 1rem; transition: all 0.3s; }
+        .tab:hover { color: #2c3e50; }
+        .tab.active { color: #3498db; border-bottom: 2px solid #3498db; margin-bottom: -2px; font-weight: 600; }
+        
+        /* Orders Table */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ecf0f1; }
+        th { background: #f8f9fa; color: #2c3e50; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
+        tr:hover { background: #f8f9fa; }
+        
+        /* Status Badge */
+        .status { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-PENDING { background: #fff3cd; color: #856404; }
+        .status-PROCESSING { background: #cce5ff; color: #004085; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .status-REFUNDED { background: #e2e3e5; color: #383d41; }
+        .status-REPAIRING { background: #ffeaa7; color: #d63031; }
+        .status-REPAIRED { background: #74b9ff; color: #0984e3; }
+        .status-REPLACING { background: #fdcb6e; color: #e17055; }
+        .status-REPLACED { background: #a29bfe; color: #6c5ce7; }
+        .status-REFUNDING { background: #dfe6e9; color: #2d3436; }
+        .status-STORE_CREDIT { background: #55efc4; color: #00b894; }
+        .status-CREDITED { background: #81ecec; color: #00cec9; }
+        .status-RETURN_REJECTED { background: #f8d7da; color: #721c24; }
+        .status-REJECTED { background: #f8d7da; color: #721c24; }
+        
+        /* Action Buttons */
+        .btn { padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; display: inline-block; font-size: 0.9rem; border: none; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-warning { background: #e67e22; color: white; }
+        .btn-warning:hover { background: #d35400; }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        
+        /* Empty State */
+        .empty-state { text-align: center; padding: 3rem; color: #95a5a6; }
+        .empty-state svg { width: 80px; height: 80px; margin-bottom: 1rem; fill: #bdc3c7; }
+        .empty-state h3 { color: #7f8c8d; margin-bottom: 0.5rem; }
+        .empty-state p { color: #95a5a6; }
+        
+        /* Order Details */
+        .order-items { font-size: 0.9rem; color: #7f8c8d; }
+        .order-total { font-weight: 600; color: #2c3e50; }
+        
+        /* Actions Column */
+        .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        /* Store Credit Banner */
+        .credit-banner { 
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); 
+            color: white; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
+        }
+        .credit-banner h3 { margin: 0; font-size: 1.2rem; }
+        .credit-banner .amount { font-size: 2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <h1>🛍️ My Dashboard</h1>
+            <div class="nav-links">
+                <a href="/products">Browse Products</a>
+                <a href="/rma/my-returns">My Returns</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="main-container">
+        <!-- Welcome Section -->
+        <div class="welcome">
+            <h2>Welcome back, {{ username }}! 👋</h2>
+            <p>Here's an overview of your orders and activity.</p>
+        </div>
+        
+        <!-- Store Credit Banner (if available) -->
+        {% if stats.store_credit > 0 %}
+        <div class="credit-banner">
+            <div>
+                <h3>💳 You have store credit available!</h3>
+                <p style="margin: 0.5rem 0 0; opacity: 0.9;">Use it on your next purchase</p>
+            </div>
+            <div class="amount">${{ "%.2f"|format(stats.store_credit) }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Stats Cards -->
+        <div class="stats">
+            <div class="stat-card orders">
+                <h3>Total Orders</h3>
+                <div class="number">{{ stats.total_orders }}</div>
+            </div>
+            <div class="stat-card returns">
+                <h3>Active Returns</h3>
+                <div class="number">{{ stats.active_returns }}</div>
+            </div>
+            <div class="stat-card spent">
+                <h3>Total Spent</h3>
+                <div class="number">${{ "%.2f"|format(stats.total_spent) }}</div>
+            </div>
+            {% if stats.store_credit > 0 %}
+            <div class="stat-card" style="border-left-color: #00b894;">
+                <h3>Store Credit</h3>
+                <div class="number" style="color: #00b894;">${{ "%.2f"|format(stats.store_credit) }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Orders Section -->
+        <div class="orders-section">
+            <h2>
+                My Orders
+                <a href="/products" class="btn btn-primary btn-small">+ New Order</a>
+            </h2>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="filterOrders('all')">All Orders</button>
+                <button class="tab" onclick="filterOrders('COMPLETED')">Completed</button>
+                <button class="tab" onclick="filterOrders('PENDING')">Pending</button>
+                <button class="tab" onclick="filterOrders('PROCESSING')">Processing</button>
+            </div>
+            
+            {% if orders %}
+            <table id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr data-status="{{ order.status }}">
+                        <td>
+                            <strong>#{{ order.id }}</strong>
+                            {% if order.is_replacement %}
+                                <span class="badge badge-info" style="background-color: #17a2b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; margin-left: 4px;">REPLACEMENT</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.created_at[:10] }}</td>
+                        <td>
+                            <div class="order-items">
+                                {% if order['items'] %}
+                                    {% for item in order['items'][:2] %}
+                                        {{ item.product_name }} ({{ item.quantity }}x)
+                                        {% if not loop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                    {% if order['items']|length > 2 %}
+                                        <br><em>+ {{ order['items']|length - 2 }} more</em>
+                                    {% endif %}
+                                {% else %}
+                                    No items
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="order-total">${{ "%.2f"|format(order.total) }}</td>
+                        {% set status_to_show = order.display_status or order.status %}
+                        <td><span class="status status-{{ status_to_show }}">{{ status_to_show }}</span></td>
+                        <td>
+                            <div class="actions">
+                                <a href="/receipt/{{ order.id }}" class="btn btn-secondary btn-small">View</a>
+                                {% if order.status == 'COMPLETED' and not order.is_replacement and not order.has_rma %}
+                                    <a href="/rma/request?sale_id={{ order.id }}" class="btn btn-warning btn-small">Request Return</a>
+                                {% elif order.has_rma %}
+                                    <a href="/rma/my-returns" class="btn btn-info btn-small">View Return</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+                <h3>No orders yet</h3>
+                <p>Start shopping to see your orders here!</p>
+                <a href="/products" class="btn btn-primary" style="margin-top: 1rem;">Browse Products</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function filterOrders(status) {
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Filter table rows
+            const rows = document.querySelectorAll('#ordersTable tbody tr');
+            rows.forEach(row => {
+                if (status === 'all' || row.dataset.status === status) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

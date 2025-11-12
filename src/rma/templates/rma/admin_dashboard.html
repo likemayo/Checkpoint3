@@ -1,0 +1,267 @@
+<!doctype html>
+<html>
+<head>
+    <title>RMA Admin Dashboard</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            color: white; 
+            text-align: center;
+            padding: 40px 20px; 
+            margin-bottom: 40px;
+        }
+        .header h1 { 
+            margin: 0 0 10px 0; 
+            font-size: 48px; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .header p { 
+            margin: 0; 
+            opacity: 0.9; 
+            font-size: 18px; 
+        }
+        
+        .section-title {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        /* Queue Cards Grid */
+        .queue-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 25px; 
+            margin-bottom: 40px;
+        }
+        
+        .queue-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .queue-card:hover { 
+            transform: translateY(-8px); 
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        
+        .queue-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .queue-icon { 
+            font-size: 48px; 
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .queue-title { 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .queue-description { 
+            font-size: 14px; 
+            color: #718096;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .queue-count { 
+            display: inline-block;
+            background: #f7fafc; 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .queue-count.warning { 
+            background: #fef5e7; 
+            color: #d68910; 
+        }
+        
+        .queue-count.danger { 
+            background: #fadbd8; 
+            color: #c0392b; 
+        }
+        
+        /* Action Cards (Metrics & Completed) */
+        .action-grid {
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 25px; 
+            margin-bottom: 40px;
+        }
+        
+        .action-card {
+            background: white; 
+            padding: 40px; 
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-card:hover { 
+            transform: translateY(-8px); 
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        
+        .action-card.metrics {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .action-card.completed {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .action-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .action-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .action-description {
+            font-size: 16px;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+        
+        .back-link { 
+            display: inline-block; 
+            margin: 20px 0; 
+            color: white; 
+            text-decoration: none; 
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .back-link:hover { 
+            background: rgba(255,255,255,0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .queue-grid, .action-grid {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ RMA Admin Dashboard</h1>
+            <p>Central hub for managing returns, refunds, and warranty claims</p>
+        </div>
+        
+        <div class="section-title">📋 Workflow Queues</div>
+        <div class="queue-grid">
+            <a href="/rma/admin/warehouse" class="queue-card">
+                <span class="queue-icon">📦</span>
+                <div class="queue-title">Warehouse Receiving</div>
+                <div class="queue-description">RMAs in transit waiting to be marked as received at the warehouse.</div>
+                <span class="queue-count {% if queues.warehouse > 10 %}warning{% endif %}">
+                    {{ queues.warehouse }} pending
+                </span>
+            </a>
+            
+            <a href="/rma/admin/queue" class="queue-card">
+                <span class="queue-icon">🔍</span>
+                <div class="queue-title">Inspection Queue</div>
+                <div class="queue-description">Items received and awaiting quality inspection by QA team.</div>
+                <span class="queue-count {% if queues.inspection > 15 %}warning{% endif %}">
+                    {{ queues.inspection }} pending
+                </span>
+            </a>
+            
+            <a href="/rma/admin/disposition-queue" class="queue-card">
+                <span class="queue-icon">⚖️</span>
+                <div class="queue-title">Disposition Queue</div>
+                <div class="queue-description">Inspected items awaiting disposition decision (refund, replacement, etc.).</div>
+                <span class="queue-count {% if queues.disposition > 10 %}warning{% endif %}">
+                    {{ queues.disposition }} pending
+                </span>
+            </a>
+            
+            <a href="/rma/admin/processing-queue" class="queue-card">
+                <span class="queue-icon">💰</span>
+                <div class="queue-title">Processing Queue</div>
+                <div class="queue-description">Disposition decided, awaiting financial processing (refunds, replacements).</div>
+                <span class="queue-count {% if queues.processing > 20 %}danger{% endif %}">
+                    {{ queues.processing }} pending
+                </span>
+            </a>
+        </div>
+        
+        <div class="section-title">📊 Reports & Analytics</div>
+        <div class="action-grid">
+            <a href="/rma/admin/metrics-dashboard" class="action-card metrics">
+                <span class="action-icon">📊</span>
+                <div class="action-title">Metrics Dashboard</div>
+                <div class="action-description">
+                    View comprehensive analytics including RMA rates, cycle times, refund trends, 
+                    queue backlogs, and product return rates.
+                </div>
+            </a>
+            
+            <a href="/rma/admin/completed" class="action-card completed">
+                <span class="action-icon">✅</span>
+                <div class="action-title">Completed & Closed RMAs</div>
+                <div class="action-description">
+                    Browse completed cases with full audit trails, resolution summaries, 
+                    and compliance records retained for 7 years.
+                </div>
+            </a>
+        </div>
+        
+        <a href="/admin" class="back-link">← Back to Admin Home</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,427 @@
+<!doctype html>
+<html>
+<head>
+    <title>RMA Metrics Dashboard</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f5f7fa; 
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0 0 10px 0; font-size: 32px; }
+        .header p { margin: 0; opacity: 0.9; font-size: 16px; }
+        
+        .section { 
+            background: white; 
+            padding: 25px; 
+            margin-bottom: 25px; 
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .section h2 { 
+            margin: 0 0 20px 0; 
+            color: #2d3748; 
+            font-size: 24px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        /* Metric Cards Grid */
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+        .metric-card { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            padding: 25px; 
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .metric-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .metric-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .metric-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .metric-card.red { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .metric-card.purple { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #2d3748; }
+        
+        .metric-label { 
+            font-size: 14px; 
+            opacity: 0.9; 
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-value { 
+            font-size: 36px; 
+            font-weight: bold; 
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .metric-subtext { 
+            font-size: 12px; 
+            opacity: 0.8; 
+            margin-top: 8px; 
+        }
+        
+        /* Queue Status */
+        .queue-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+        }
+        .queue-item { 
+            background: #f7fafc; 
+            padding: 20px; 
+            border-radius: 8px; 
+            border-left: 4px solid #667eea;
+            transition: background 0.2s;
+        }
+        .queue-item:hover { background: #edf2f7; }
+        .queue-item.warning { border-left-color: #f6ad55; }
+        .queue-item.danger { border-left-color: #fc8181; }
+        .queue-label { font-size: 13px; color: #718096; margin-bottom: 8px; font-weight: 600; }
+        .queue-count { font-size: 32px; font-weight: bold; color: #2d3748; }
+        
+        /* Disposition Breakdown */
+        .disposition-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 15px; 
+        }
+        .disposition-item { 
+            text-align: center; 
+            padding: 20px; 
+            background: #f7fafc; 
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .disposition-item:hover { transform: scale(1.05); }
+        .disposition-badge { 
+            display: inline-block;
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .disposition-badge.REFUND { background: #c6f6d5; color: #22543d; }
+        .disposition-badge.REPLACEMENT { background: #bee3f8; color: #2c5282; }
+        .disposition-badge.REPAIR { background: #e2e8f0; color: #2d3748; }
+        .disposition-badge.REJECT { background: #fed7d7; color: #742a2a; }
+        .disposition-badge.STORE_CREDIT { background: #fefcbf; color: #744210; }
+        .disposition-count { font-size: 28px; font-weight: bold; color: #2d3748; margin: 10px 0; }
+        .disposition-percent { font-size: 14px; color: #718096; }
+        
+        /* Cycle Time Breakdown */
+        .cycle-time-bars { margin-top: 20px; }
+        .cycle-time-item { margin-bottom: 20px; }
+        .cycle-time-label { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .cycle-time-bar { 
+            height: 30px; 
+            background: #e2e8f0; 
+            border-radius: 15px; 
+            overflow: hidden;
+            position: relative;
+        }
+        .cycle-time-fill { 
+            height: 100%; 
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Trends */
+        .trend-item { 
+            padding: 15px; 
+            background: #f7fafc; 
+            border-radius: 8px; 
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .trend-label { font-size: 14px; font-weight: 600; color: #2d3748; }
+        .trend-value { font-size: 24px; font-weight: bold; color: #667eea; }
+        .trend-change { 
+            font-size: 13px; 
+            padding: 4px 10px; 
+            border-radius: 12px; 
+            font-weight: 600;
+        }
+        .trend-change.up { background: #c6f6d5; color: #22543d; }
+        .trend-change.down { background: #fed7d7; color: #742a2a; }
+        
+        /* Table */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px;
+        }
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #e2e8f0; 
+        }
+        th { 
+            background: #f7fafc; 
+            font-weight: 600; 
+            color: #2d3748;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { color: #4a5568; }
+        tr:hover { background: #f7fafc; }
+        
+        .back-link { 
+            display: inline-block; 
+            margin: 20px 0; 
+            color: #667eea; 
+            text-decoration: none; 
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .back-link:hover { color: #764ba2; text-decoration: underline; }
+        
+        .alert { 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        .alert.info { background: #ebf8ff; color: #2c5282; border-left-color: #4299e1; }
+        .alert.warning { background: #fffaf0; color: #744210; border-left-color: #ed8936; }
+        .alert.success { background: #f0fff4; color: #22543d; border-left-color: #48bb78; }
+        
+        .export-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .export-btn:hover { background: #764ba2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 RMA Metrics Dashboard</h1>
+            <p>Comprehensive returns and refunds analytics - Last updated: {{ current_time }}</p>
+        </div>
+        
+        {% if metrics.sla_compliance < 80 %}
+        <div class="alert warning">
+            ⚠️ <strong>SLA Alert:</strong> Only {{ "%.1f"|format(metrics.sla_compliance) }}% of RMAs are being completed within target time. Consider reviewing bottlenecks.
+        </div>
+        {% endif %}
+        
+        <!-- Business Health Section -->
+        <div class="section">
+            <h2>💼 Business Health Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">RMA Rate</div>
+                    <div class="metric-value">{{ "%.2f"|format(metrics.rma_rate) }}%</div>
+                    <div class="metric-subtext">{{ metrics.total_rmas }} RMAs / {{ metrics.total_orders }} Orders</div>
+                </div>
+                
+                <div class="metric-card green">
+                    <div class="metric-label">Total Refund Amount</div>
+                    <div class="metric-value">${{ "{:,.2f}".format(metrics.total_refund_amount) }}</div>
+                    <div class="metric-subtext">Current month</div>
+                </div>
+                
+                <div class="metric-card orange">
+                    <div class="metric-label">Refund Rate</div>
+                    <div class="metric-value">{{ "%.2f"|format(metrics.refund_rate) }}%</div>
+                    <div class="metric-subtext">Of total revenue</div>
+                </div>
+                
+                <div class="metric-card blue">
+                    <div class="metric-label">Refunds per Day</div>
+                    <div class="metric-value">{{ "%.1f"|format(metrics.refunds_per_day) }}</div>
+                    <div class="metric-subtext">Last 30 days average</div>
+                </div>
+                
+                <div class="metric-card red">
+                    <div class="metric-label">Approval Rate</div>
+                    <div class="metric-value">{{ "%.1f"|format(metrics.approval_rate) }}%</div>
+                    <div class="metric-subtext">{{ metrics.approved_count }} approved / {{ metrics.total_rmas }} submitted</div>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #2d3748; font-size: 18px;">Disposition Breakdown</h3>
+            <div class="disposition-grid">
+                {% for disp in metrics.disposition_breakdown %}
+                <div class="disposition-item">
+                    <div class="disposition-badge {{ disp.disposition }}">{{ disp.disposition or 'PENDING' }}</div>
+                    <div class="disposition-count">{{ disp.count }}</div>
+                    <div class="disposition-percent">{{ "%.1f"|format(disp.percentage) }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- System Performance Section -->
+        <div class="section">
+            <h2>⚡ System Performance Metrics</h2>
+            
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: #2d3748; font-size: 18px;">Queue Backlogs (Current)</h3>
+            <div class="queue-grid">
+                <div class="queue-item {% if metrics.queue_backlog.warehouse > 10 %}warning{% endif %}">
+                    <div class="queue-label">📦 Warehouse Receiving</div>
+                    <div class="queue-count">{{ metrics.queue_backlog.warehouse }}</div>
+                </div>
+                <div class="queue-item {% if metrics.queue_backlog.inspection > 15 %}warning{% endif %}">
+                    <div class="queue-label">🔍 Inspection</div>
+                    <div class="queue-count">{{ metrics.queue_backlog.inspection }}</div>
+                </div>
+                <div class="queue-item {% if metrics.queue_backlog.disposition > 10 %}warning{% endif %}">
+                    <div class="queue-label">⚖️ Disposition</div>
+                    <div class="queue-count">{{ metrics.queue_backlog.disposition }}</div>
+                </div>
+                <div class="queue-item {% if metrics.queue_backlog.processing > 20 %}danger{% endif %}">
+                    <div class="queue-label">💰 Processing</div>
+                    <div class="queue-count">{{ metrics.queue_backlog.processing }}</div>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #2d3748; font-size: 18px;">Average Cycle Time: <span style="color: #667eea;">{{ "%.1f"|format(metrics.avg_cycle_time) }} days</span></h3>
+            <div class="cycle-time-bars">
+                {% for stage in metrics.cycle_time_by_stage %}
+                <div class="cycle-time-item">
+                    <div class="cycle-time-label">
+                        <span>{{ stage.stage }}</span>
+                        <span style="color: #667eea;">{{ "%.1f"|format(stage.avg_days) }} days</span>
+                    </div>
+                    <div class="cycle-time-bar">
+                        <div class="cycle-time-fill" style="width: {{ (stage.avg_days / metrics.max_stage_time * 100)|round }}%">
+                            {{ "%.1f"|format(stage.avg_days) }}d
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="metrics-grid" style="margin-top: 30px;">
+                <div class="metric-card purple">
+                    <div class="metric-label">SLA Compliance</div>
+                    <div class="metric-value">{{ "%.1f"|format(metrics.sla_compliance) }}%</div>
+                    <div class="metric-subtext">Target: 7 days resolution</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trends Section -->
+        <div class="section">
+            <h2>📈 Trends & Analysis</h2>
+            
+            <div class="trend-item">
+                <div>
+                    <div class="trend-label">RMA Volume (Last 30 Days)</div>
+                    <div style="font-size: 12px; color: #718096; margin-top: 4px;">Total submissions</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="trend-value">{{ metrics.trend_rma_volume_30d }}</div>
+                    {% if metrics.trend_rma_volume_change %}
+                    <div class="trend-change {{ 'up' if metrics.trend_rma_volume_change > 0 else 'down' }}">
+                        {{ "+" if metrics.trend_rma_volume_change > 0 else "" }}{{ "%.1f"|format(metrics.trend_rma_volume_change) }}%
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="trend-item">
+                <div>
+                    <div class="trend-label">Cycle Time Trend</div>
+                    <div style="font-size: 12px; color: #718096; margin-top: 4px;">Last 30d vs previous 30d</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="trend-value">{{ "%.1f"|format(metrics.trend_cycle_time_30d) }}d</div>
+                    {% if metrics.trend_cycle_time_change %}
+                    <div class="trend-change {{ 'down' if metrics.trend_cycle_time_change < 0 else 'up' }}">
+                        {{ "+" if metrics.trend_cycle_time_change > 0 else "" }}{{ "%.1f"|format(metrics.trend_cycle_time_change) }}%
+                        {% if metrics.trend_cycle_time_change < 0 %}✓ Improving{% else %}⚠️ Slowing{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="trend-item">
+                <div>
+                    <div class="trend-label">Refunds per Day (Last 30 Days)</div>
+                    <div style="font-size: 12px; color: #718096; margin-top: 4px;">Daily processing rate</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="trend-value">{{ "%.1f"|format(metrics.refunds_per_day) }}</div>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #2d3748; font-size: 18px;">Top Products by Return Rate</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product ID</th>
+                        <th>Product Name</th>
+                        <th>Return Count</th>
+                        <th>Return Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in metrics.top_returned_products %}
+                    <tr>
+                        <td>#{{ product.product_id }}</td>
+                        <td>{{ product.product_name }}</td>
+                        <td><strong>{{ product.return_count }}</strong></td>
+                        <td><span style="color: {% if product.return_rate > 15 %}#e53e3e{% elif product.return_rate > 10 %}#dd6b20{% else %}#38a169{% endif %}; font-weight: 600;">{{ "%.1f"|format(product.return_rate) }}%</span></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not metrics.top_returned_products %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #a0aec0;">No product data available</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="export-btn" onclick="window.print()">📥 Export Report (Print)</button>
+        </div>
+        
+        <a href="/rma/admin/dashboard" class="back-link">🛠️ Back to RMA Admin Dashboard</a>
+    </div>
+</body>
+</html>

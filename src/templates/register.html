@@ -1,11 +1,27 @@
 <!doctype html>
 <html>
-<head><title>Sign Up</title></head>
+<head>
+    <title>Sign Up</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+        h1 { text-align: center; }
+        .role-selector { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; }
+        .role-selector label { display: block; margin: 10px 0; cursor: pointer; }
+        .role-selector input[type="radio"] { margin-right: 10px; }
+        .form-group { margin: 15px 0; }
+        label { font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #218838; }
+        .login-link { text-align: center; margin-top: 20px; }
+        .info-text { font-size: 12px; color: #666; margin-top: 5px; }
+    </style>
+</head>
 <body>
     <h1>Create Account</h1>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul>
+        <ul style="color: red; list-style: none; padding: 0;">
         {% for category, message in messages %}
           <li>[{{ category }}] {{ message }}</li>
         {% endfor %}
@@ -13,24 +29,113 @@
       {% endif %}
     {% endwith %}
     
-    <form method="post" action="/register">
-        <p>
-            <label>Full Name:</label><br>
-            <input type="text" name="name" required>
-        </p>
-        <p>
-            <label>Username:</label><br>
-            <input type="text" name="username" required>
-        </p>
-        <p>
-            <label>Password:</label><br>
-            <input type="password" name="password" required>
-        </p>
-        <p>
+    <div class="role-selector">
+        <strong>Account Type:</strong>
+        <label>
+            <input type="radio" name="role" value="customer" checked onchange="updateRegisterForm(this.value)">
+            Customer Account
+        </label>
+        <label>
+            <input type="radio" name="role" value="admin" onchange="updateRegisterForm(this.value)">
+            Admin Account
+        </label>
+    </div>
+    
+    <form method="post" action="/register" id="registerForm">
+        <div class="form-group" id="nameGroup">
+            <label>Full Name:</label>
+            <input type="text" name="name" id="nameField" required>
+        </div>
+        <div class="form-group" id="usernameGroup">
+            <label>Username:</label>
+            <input type="text" name="username" id="usernameField" required>
+        </div>
+        <div class="form-group" id="passwordGroup">
+            <label>Password:</label>
+            <input type="password" name="password" id="passwordField" required>
+        </div>
+        <div class="form-group">
             <button type="submit">Sign Up</button>
-        </p>
+        </div>
     </form>
     
-    <p><a href="/login">Already have an account? Login</a></p>
+    <div class="login-link">
+        <a href="/login">Already have an account? Login</a>
+    </div>
+    
+    <script>
+        function updateRegisterForm(role) {
+            const form = document.getElementById('registerForm');
+            const nameGroup = document.getElementById('nameGroup');
+            const usernameGroup = document.getElementById('usernameGroup');
+            const passwordGroup = document.getElementById('passwordGroup');
+            const nameField = document.getElementById('nameField');
+            const usernameField = document.getElementById('usernameField');
+            const passwordField = document.getElementById('passwordField');
+            
+            if (role === 'admin') {
+                // Admin registration - require super admin key verification first
+                form.action = '/register-admin';
+                
+                // Change fields for admin creation
+                nameGroup.style.display = 'block';
+                usernameGroup.style.display = 'block';
+                nameField.required = true;
+                usernameField.required = true;
+                
+                nameGroup.querySelector('label').textContent = 'Super Admin Key:';
+                nameField.placeholder = 'Enter super admin key (admin-demo-key)';
+                nameField.name = 'super_admin_key';
+                nameField.type = 'password';
+                
+                usernameGroup.querySelector('label').textContent = 'New Admin Username:';
+                usernameField.placeholder = 'Choose a username for the new admin';
+                usernameField.name = 'admin_username';
+                
+                passwordGroup.querySelector('label').textContent = 'New Admin Password:';
+                passwordField.placeholder = 'Choose a password for the new admin';
+                passwordField.name = 'admin_password';
+                
+                // Add info text
+                let infoDiv = document.getElementById('adminInfo');
+                if (!infoDiv) {
+                    infoDiv = document.createElement('div');
+                    infoDiv.id = 'adminInfo';
+                    infoDiv.className = 'info-text';
+                    infoDiv.innerHTML = '<strong>Note:</strong> You need the super admin key to create new admin accounts.';
+                    passwordGroup.appendChild(infoDiv);
+                }
+            } else {
+                // Customer registration (default)
+                form.action = '/register';
+                nameGroup.style.display = 'block';
+                usernameGroup.style.display = 'block';
+                nameField.required = true;
+                usernameField.required = true;
+                
+                nameGroup.querySelector('label').textContent = 'Full Name:';
+                nameField.placeholder = '';
+                nameField.name = 'name';
+                nameField.type = 'text';
+                
+                usernameGroup.querySelector('label').textContent = 'Username:';
+                usernameField.placeholder = '';
+                usernameField.name = 'username';
+                
+                passwordGroup.querySelector('label').textContent = 'Password:';
+                passwordField.placeholder = '';
+                passwordField.name = 'password';
+                
+                // Remove admin info text if exists
+                const infoDiv = document.getElementById('adminInfo');
+                if (infoDiv) {
+                    infoDiv.remove();
+                }
+            }
+        }
+        
+        // Initialize on page load
+        updateRegisterForm('customer');
+    </script>
 </body>
 </html>

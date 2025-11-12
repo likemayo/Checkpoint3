@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+    <title>Request Return - Order #{{ sale.id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .error { color: #f44336; background: #ffebee; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .success { color: #4caf50; background: #e8f5e9; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        textarea { min-height: 100px; }
+        .checkbox-group { margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+        .checkbox-group label { display: inline; font-weight: normal; margin-left: 5px; }
+        button { background: #f44336; color: white; padding: 12px 30px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #d32f2f; }
+        .back-link { display: inline-block; margin-top: 15px; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .info-box { background: #e3f2fd; padding: 15px; border-left: 4px solid #1976d2; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Request Return for Order #{{ sale.id }}</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="info-box">
+        <strong>Return Policy:</strong> Items must be returned within 30 days of purchase. 
+        Returns are subject to inspection and approval. Refunds will be issued to the original payment method.
+    </div>
+    
+    <h2>Order Details</h2>
+    <p><strong>Order Date:</strong> {{ sale.sale_time }}</p>
+    <p><strong>Total:</strong> ${{ '%.2f' % (sale.total_cents / 100.0) }}</p>
+    <p><strong>Status:</strong> {{ sale.status }}</p>
+    
+    <h2>Items in Order</h2>
+    <table>
+        <tr>
+            <th>Select</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Price</th>
+        </tr>
+        {% for item in items %}
+        <tr>
+            <td>
+                <input type="checkbox" 
+                       class="item-checkbox" 
+                       name="items" 
+                       value="{{ item.id }}" 
+                       data-product-id="{{ item.product_id }}"
+                       data-quantity="{{ item.quantity }}"
+                       checked>
+            </td>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ '%.2f' % (item.price_cents / 100.0) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    
+    <h2>Return Information</h2>
+    <form method="POST" action="/rma/submit-form" enctype="multipart/form-data" id="rmaForm">
+        <input type="hidden" name="sale_id" value="{{ sale.id }}">
+        
+        <div class="form-group">
+            <label for="reason">Reason for Return *</label>
+            <select id="reason" name="reason" required>
+                <option value="">-- Select a reason --</option>
+                <option value="Defective Product">Defective Product</option>
+                <option value="Wrong Item Received">Wrong Item Received</option>
+                <option value="Not As Described">Not As Described</option>
+                <option value="Changed Mind">Changed Mind</option>
+                <option value="Better Price Elsewhere">Better Price Elsewhere</option>
+                <option value="No Longer Needed">No Longer Needed</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Detailed Description *</label>
+            <textarea id="description" name="description" required placeholder="Please provide details about why you're returning this item..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="photo">Upload Photo (Optional)</label>
+            <input type="file" id="photo" name="photo" accept="image/*">
+            <small>Upload a photo showing the issue (JPG, PNG, GIF - max 5MB)</small>
+        </div>
+        
+        <div id="selected-items-container"></div>
+        
+        <button type="submit">Submit Return Request</button>
+        <a href="/receipt/{{ sale.id }}" class="back-link">Cancel</a>
+    </form>
+    
+    <script>
+        // Track selected items
+        document.getElementById('rmaForm').addEventListener('submit', function(e) {
+            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one item to return');
+                return false;
+            }
+            
+            // Build items array
+            const items = [];
+            checkboxes.forEach((checkbox) => {
+                items.push({
+                    sale_item_id: parseInt(checkbox.value),
+                    product_id: parseInt(checkbox.dataset.productId),
+                    quantity: parseInt(checkbox.dataset.quantity)
+                });
+            });
+            
+            // Add items as JSON hidden input
+            const container = document.getElementById('selected-items-container');
+            container.innerHTML = `<input type="hidden" name="items" value='${JSON.stringify(items)}'>`;
+        });
+    </script>
+</body>
+</html>

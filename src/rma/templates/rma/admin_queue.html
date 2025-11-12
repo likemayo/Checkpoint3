@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <title>Inspection Queue</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    .filters { margin: 10px 0 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f5f5f5; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    .badge.RECEIVED { background: #cce5ff; color: #004085; }
+    .badge.INSPECTING { background: #e7e8ea; color: #383d41; }
+    .actions a { margin-right: 8px; }
+    .search { margin-left: 12px; }
+    .nav-links { margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 8px; }
+    .nav-links a { margin-right: 15px; padding: 8px 16px; background: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    .nav-links a:hover { background: #1565c0; }
+  </style>
+</head>
+<body>
+  <h1>Inspection Queue</h1>
+  
+  <div class="nav-links">
+    <a href="/rma/admin/dashboard">🏠 Back to Admin Dashboard</a>
+  </div>
+  
+  <div class="filters">
+    <form method="GET" action="">
+      <label>Status:
+        <select name="status" onchange="this.form.submit()">
+          <option value="" {% if not filter_status %}selected{% endif %}>All</option>
+          <option value="RECEIVED" {% if filter_status == 'RECEIVED' %}selected{% endif %}>RECEIVED</option>
+          <option value="INSPECTING" {% if filter_status == 'INSPECTING' %}selected{% endif %}>INSPECTING</option>
+        </select>
+      </label>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>RMA Number</th>
+        <th>Order</th>
+        <th>User</th>
+        <th>Status</th>
+        <th>Received</th>
+        <th>Inspector</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rma in rmas %}
+      <tr>
+        <td>{{ rma.id }}</td>
+        <td>{{ rma.rma_number or '-' }}</td>
+        <td>#{{ rma.sale_id }}</td>
+        <td>{{ rma.user_id }}</td>
+        <td><span class="badge {{ rma.status }}">{{ rma.status }}</span></td>
+        <td>{{ rma.received_at or '-' }}</td>
+        <td>{{ rma.inspected_by or '-' }}</td>
+        <td class="actions">
+          <a href="/rma/admin/inspect/{{ rma.id }}">Inspect</a>
+          <a href="/rma/admin/view/{{ rma.id }}">View</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:#666;">No RMAs awaiting inspection.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="margin-top: 16px;">
+    <a href="/rma/admin/warehouse">← Warehouse Queue</a> |
+    <a href="/rma/admin/disposition-queue">Disposition Queue →</a> |
+    <a href="/rma/admin/dashboard">Admin Dashboard</a>
+  </p>
+</body>
+</html>

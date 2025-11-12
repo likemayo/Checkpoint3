@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <title>Disposition Queue</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f5f5f5; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    .badge.INSPECTED { background: #e7e8ea; color: #383d41; }
+    .badge.DISPOSITION { background: #fff3cd; color: #856404; }
+    .actions a { margin-right: 8px; color: #1976d2; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .nav-links { margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 8px; }
+    .nav-links a { margin-right: 15px; padding: 8px 16px; background: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    .nav-links a:hover { background: #1565c0; }
+  </style>
+</head>
+<body>
+  <h1>Disposition Queue</h1>
+  <p>Inspected RMAs awaiting disposition decision (refund, replacement, rejection, etc.).</p>
+
+  <div class="nav-links">
+    <a href="/rma/admin/dashboard">🏠 Back to Admin Dashboard</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>RMA Number</th>
+        <th>Order</th>
+        <th>User</th>
+        <th>Status</th>
+        <th>Inspection Result</th>
+        <th>Disposition</th>
+        <th>Inspected By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rma in rmas %}
+      <tr>
+        <td>{{ rma.id }}</td>
+        <td>{{ rma.rma_number or '-' }}</td>
+        <td>#{{ rma.sale_id }}</td>
+        <td>{{ rma.user_id }}</td>
+        <td><span class="badge {{ rma.status }}">{{ rma.status }}</span></td>
+        <td>{{ rma.inspection_result or '-' }}</td>
+        <td>
+          {% if rma.disposition %}
+            <span class="badge" style="background:#d1ecf1;color:#0c5460;">{{ rma.disposition }}</span>
+          {% else %}
+            <span style="color:#999;">Pending</span>
+          {% endif %}
+        </td>
+        <td>{{ rma.inspected_by or '-' }}</td>
+        <td class="actions">
+          {% if rma.disposition %}
+            <a href="/rma/admin/disposition/{{ rma.id }}" style="color:#666;">Update Decision</a>
+          {% else %}
+            <a href="/rma/admin/disposition/{{ rma.id }}">Make Decision</a>
+          {% endif %}
+          <a href="/rma/admin/view-disposition/{{ rma.id }}">View Details</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" style="text-align:center;color:#666;">No RMAs awaiting disposition.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="margin-top: 16px;">
+    <a href="/rma/admin/queue">← Inspection Queue</a> |
+    <a href="/rma/admin/warehouse">Warehouse Queue</a> |
+    <a href="/rma/admin/processing-queue">Processing Queue →</a> |
+    <a href="/rma/admin/completed">Completed RMAs</a>
+  </p>
+</body>
+</html>

@@ -20,22 +20,18 @@ bp = Blueprint("partners", __name__, template_folder=Path(__file__).parent.joinp
 
 def _is_admin_request() -> bool:
     """Return True if request is authenticated as admin either via session or header."""
-    # Consider session-based admin authentication for UI flows.
-    # Also allow a programmatic ADMIN_API_KEY header for tests and CI.
-    from flask import request
+    # Check session-based admin authentication first (for UI flows)
     if session.get("is_admin"):
         return True
-    # Accept X-Admin-Key header matching ADMIN_API_KEY for programmatic access
+    
+    # For programmatic access: accept X-Admin-Key header matching ADMIN_API_KEY
     header_key = request.headers.get('X-Admin-Key')
     expected = os.environ.get('ADMIN_API_KEY')
-    # If an ADMIN_API_KEY is configured in the environment, treat the
-    # process as having programmatic admin access (this matches test-suite
-    # expectations where tests set ADMIN_API_KEY to enable admin endpoints).
-    if expected:
-        return True
+    
     # If a header is provided and matches the expected admin key, allow.
     if header_key and expected and header_key == expected:
         return True
+    
     # fallback: no admin auth
     return False
 
@@ -107,8 +103,8 @@ def index():
     return render_template("partners/partner_upload.html")
 
 
-@bp.get('/partner/admin')
-@bp.get('/partner/admin/')
+@bp.get('/admin')
+@bp.get('/admin/')
 def partner_admin():
     """Render the admin index (shows admin controls). The page itself is
     accessible to anyone for discoverability; admin-only actions are
@@ -117,8 +113,8 @@ def partner_admin():
     return render_template('partners/admin.html')
 
 
-@bp.get('/partner/admin/metrics')
-@bp.get('/partner/admin/metrics/')
+@bp.get('/admin/metrics')
+@bp.get('/admin/metrics/')
 @admin_required
 def partner_admin_metrics():
     """Admin-only: render a small metrics dashboard using in-process Prometheus metrics.
@@ -206,8 +202,8 @@ def partner_admin_metrics():
     return render_template('partners/admin_metrics.html', **context)
 
 
-@bp.get('/partner/admin/jobs')
-@bp.get('/partner/admin/jobs/')
+@bp.get('/admin/jobs')
+@bp.get('/admin/jobs/')
 @admin_required
 def partner_admin_jobs():
     """Render a simple admin HTML page that queries the JSON jobs API and
@@ -216,8 +212,8 @@ def partner_admin_jobs():
     return render_template('partners/admin_jobs.html')
 
 
-@bp.post('/partner/admin/login')
-@bp.post('/partner/admin/login/')
+@bp.post('/admin/login')
+@bp.post('/admin/login/')
 def partner_admin_login():
     # Support JSON API and form POST for login.
     expected = os.environ.get('ADMIN_API_KEY') or 'admin-demo-key'
@@ -238,21 +234,21 @@ def partner_admin_login():
     abort(401, 'Invalid admin key')
 
 
-@bp.get('/partner/admin/login')
-@bp.get('/partner/admin/login/')
+@bp.get('/admin/login')
+@bp.get('/admin/login/')
 def partner_admin_login_get():
     """Render a simple admin login form for server-side authentication."""
     return render_template('partners/admin_login.html')
 
 
-@bp.post('/partner/admin/logout')
+@bp.post('/admin/logout')
 def partner_admin_logout():
     session.pop('is_admin', None)
     return ('OK', 200)
 
 
-@bp.get('/partner/admin/audit')
-@bp.get('/partner/admin/audit/')
+@bp.get('/admin/audit')
+@bp.get('/admin/audit/')
 @admin_required
 def partner_admin_audit():
     """Admin page: view recent partner ingest audit rows with simple filters."""
@@ -289,7 +285,7 @@ def partner_admin_audit():
 # background threads being created at import time (helps tests).
 
 
-@bp.post("/partner/ingest")
+@bp.post("/ingest")
 def partner_ingest():
     api_key = request.headers.get("X-API-Key") or request.form.get("api_key")
     if not api_key:
@@ -428,18 +424,18 @@ def partner_ingest():
 # Integrability / onboarding endpoints
 
 
-@bp.get('/partner/contract')
+@bp.get('/contract')
 def partner_contract():
     """Return machine-readable contract for partner feeds."""
     return jsonify(get_contract())
 
 
-@bp.get('/partner/contract/example')
+@bp.get('/contract/example')
 def partner_contract_example():
     return jsonify(get_contract().get("example"))
 
 
-@bp.post('/partner/contract/validate')
+@bp.post('/contract/validate')
 def partner_contract_validate():
     """Sandbox validation endpoint for partners to validate sample feeds."""
     # Rate-limit validation attempts to prevent abuse (best-effort)
@@ -460,7 +456,7 @@ def partner_contract_validate():
     return jsonify({"status": "ok", "accepted": len(valid), "rejected": 0})
 
 
-@bp.post('/partner/onboard')
+@bp.post('/onboard')
 @admin_required
 def partner_onboard():
     """Simple demo onboarding: create a partner and issue an API key. Admin-only in demo."""
@@ -490,7 +486,7 @@ def partner_onboard():
 
 
 
-@bp.post('/partner/onboard_form')
+@bp.post('/onboard_form')
 @admin_required
 def partner_onboard_form():
     """Admin UI helper: create a partner and return the API key as JSON.
@@ -536,7 +532,7 @@ def partner_onboard_form():
         conn.close()
 
 
-@bp.get('/partner/help')
+@bp.get('/help')
 def partner_help():
     """Human-friendly quickstart for partners (small page with sample curl)."""
     # Keep this small and machine-readable (JSON) for discoverability
@@ -568,7 +564,7 @@ def json_error_handler(err):
         description = str(err)
     payload = {"error": name, "details": description}
     return jsonify(payload), code
-@bp.post('/partner/schedule')
+@bp.post('/schedule')
 def partner_schedule():
     """Trigger scheduled ingestion for a partner. For demo, this simply returns 200.
 
@@ -577,8 +573,8 @@ def partner_schedule():
     return ("Scheduled", 200)
 
 
-@bp.get('/partner/schedules')
-@bp.get('/partner/schedules/')
+@bp.get('/schedules')
+@bp.get('/schedules/')
 @admin_required
 def list_schedules():
     """Admin endpoint: list all schedules."""
@@ -594,8 +590,8 @@ def list_schedules():
     record_audit(None, admin_key, "admin_list_schedules")
 
 
-@bp.post('/partner/schedules')
-@bp.post('/partner/schedules/')
+@bp.post('/schedules')
+@bp.post('/schedules/')
 @admin_required
 def create_schedule():
     """Admin endpoint: create a schedule. Expects JSON: {partner_id, schedule_type, schedule_value, enabled}
@@ -622,8 +618,8 @@ def create_schedule():
     record_audit(None, admin_key, "admin_create_schedule", payload=str(data))
 
 
-@bp.delete('/partner/schedules/<int:sid>')
-@bp.delete('/partner/schedules/<int:sid>/')
+@bp.delete('/schedules/<int:sid>')
+@bp.delete('/schedules/<int:sid>/')
 @admin_required
 def delete_schedule(sid: int):
     conn = get_conn()
@@ -637,8 +633,8 @@ def delete_schedule(sid: int):
     record_audit(None, admin_key, "admin_delete_schedule", payload=str(sid))
 
 
-@bp.get('/partner/jobs')
-@bp.get('/partner/jobs/')
+@bp.get('/jobs')
+@bp.get('/jobs/')
 @admin_required
 def partner_jobs():
     """Inspect recent partner ingest jobs and counts.
@@ -663,7 +659,7 @@ def partner_jobs():
         conn.close()
 
 
-@bp.get('/partner/jobs/<int:job_id>')
+@bp.get('/jobs/<int:job_id>')
 def partner_job_status(job_id: int):
     """Return structured diagnostics and status for a specific job.
 
@@ -728,7 +724,7 @@ def partner_job_status(job_id: int):
 
 
 
-@bp.get('/partner/diagnostics/<int:diag_id>')
+@bp.get('/diagnostics/<int:diag_id>')
 def partner_diagnostics(diag_id: int):
     """Return offloaded diagnostics artifact. Admin or owning partner may fetch."""
     api_key = request.headers.get("X-API-Key")
@@ -761,13 +757,13 @@ def partner_diagnostics(diag_id: int):
         conn.close()
 
 
-@bp.get('/partner/metrics')
-@bp.get('/partner/metrics/')
+@bp.get('/metrics')
+@bp.get('/metrics/')
 def partner_metrics():
     return jsonify(get_metrics())
 
 
-@bp.post('/partner/jobs/<int:job_id>/requeue')
+@bp.post('/jobs/<int:job_id>/requeue')
 def partner_job_requeue(job_id: int):
     """Requeue a specific job.
 
@@ -808,7 +804,7 @@ def partner_job_requeue(job_id: int):
         conn.close()
 
 
-@bp.post('/partner/jobs/requeue_failed')
+@bp.post('/jobs/requeue_failed')
 def partner_requeue_failed():
     """Requeue all failed jobs for the partner identified by X-API-Key."""
     api_key = request.headers.get("X-API-Key")

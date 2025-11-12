@@ -1,0 +1,301 @@
+<!doctype html>
+<html>
+<head>
+    <title>Return Details - {{ rma.rma_number }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+        .header { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .status { padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: inline-block; }
+        .status-SUBMITTED { background: #fff3cd; color: #856404; }
+        .status-APPROVED { background: #d4edda; color: #155724; }
+        .status-REJECTED { background: #f8d7da; color: #721c24; }
+        .status-SHIPPING { background: #d1ecf1; color: #0c5460; }
+        .status-RECEIVED { background: #cce5ff; color: #004085; }
+        .status-INSPECTING { background: #e7e8ea; color: #383d41; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .status-REPAIRING { background: #ffeaa7; color: #d63031; }
+        .status-REPAIRED { background: #74b9ff; color: #0984e3; }
+        .status-REPLACING { background: #fdcb6e; color: #e17055; }
+        .status-REPLACED { background: #a29bfe; color: #6c5ce7; }
+        .status-REFUNDING { background: #dfe6e9; color: #2d3436; }
+        .status-REFUNDED { background: #e2e3e5; color: #383d41; }
+        .status-STORE_CREDIT { background: #55efc4; color: #00b894; }
+        .status-CREDITED { background: #81ecec; color: #00cec9; }
+        .status-DISPOSITION { background: #e7f3ff; color: #0066cc; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+        .section h2 { margin-top: 0; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: bold; width: 180px; color: #666; }
+        .info-value { flex: 1; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .timeline { margin: 20px 0; }
+        .timeline-item { padding: 15px; margin: 10px 0; border-left: 3px solid #1976d2; background: #f9f9f9; }
+        .timeline-date { font-size: 12px; color: #666; }
+        .timeline-action { font-weight: bold; color: #333; margin: 5px 0; }
+        .timeline-details { color: #666; font-size: 14px; }
+        .alert { padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .back-link { display: inline-block; margin: 15px 0; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .photo { max-width: 300px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .refund-box { background: #e8f5e9; padding: 15px; border-radius: 8px; border: 2px solid #4caf50; }
+        .refund-amount { font-size: 24px; font-weight: bold; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Return Request: {{ rma.rma_number }}</h1>
+        <p>Status: <span class="status status-{{ display_status or rma.status }}">{{ display_status or rma.status }}</span></p>
+        <p style="margin: 5px 0; color: #666;">Submitted: {{ rma.created_at }}</p>
+    </div>
+    
+    {% if rma.status == 'REJECTED' or (rma.disposition == 'REJECT' and display_status == 'REJECTED') %}
+    <div class="alert alert-danger">
+        <strong>Return Rejected</strong>
+        <p>{{ rma.resolution_notes or 'Your return request was rejected. Please contact customer service for more information.' }}</p>
+    </div>
+    {% elif rma.status == 'CANCELLED' %}
+    <div class="alert alert-warning">
+        <strong>Return Cancelled</strong>
+        <p>{{ rma.resolution_notes or 'This return request was cancelled.' }}</p>
+    </div>
+    {% elif rma.status == 'APPROVED' and not rma.carrier %}
+    <div class="alert alert-info">
+        <strong>Next Step: Ship Your Return</strong>
+        <p>Your return has been approved! Please ship the items back to us and update the tracking information.</p>
+        <form action="/rma/update-shipping-form/{{ rma.id }}" method="POST" style="margin-top: 15px;">
+            <label>Carrier: <input type="text" name="carrier" required style="margin: 5px; padding: 5px;"></label><br>
+            <label>Tracking Number: <input type="text" name="tracking_number" required style="margin: 5px; padding: 5px;"></label><br>
+            <button type="submit" style="margin: 10px 5px; padding: 8px 16px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit Tracking Info</button>
+        </form>
+    </div>
+    {% elif rma.status == 'SHIPPING' %}
+    <div class="alert alert-info">
+        <strong>In Transit</strong>
+        <p>We're waiting to receive your return. Tracking: {{ rma.carrier }} - {{ rma.tracking_number }}</p>
+    </div>
+    {% elif rma.status == 'RECEIVED' %}
+    <div class="alert alert-info">
+        <strong>Received</strong>
+        <p>We've received your return and will begin inspection shortly.</p>
+    </div>
+    {% elif rma.status == 'INSPECTING' %}
+    <div class="alert alert-info">
+        <strong>Under Inspection</strong>
+        <p>Our team is currently inspecting your returned items.</p>
+    </div>
+    {% elif rma.status == 'COMPLETED' %}
+    <div class="alert alert-success">
+        <strong>Return Completed</strong>
+        <p>Your return has been processed successfully.</p>
+    </div>
+    {% endif %}
+    
+    <div class="section">
+        <h2>Return Information</h2>
+        <div class="info-row">
+            <div class="info-label">Order ID:</div>
+            <div class="info-value">#{{ rma.sale_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Reason:</div>
+            <div class="info-value">{{ rma.reason }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Description:</div>
+            <div class="info-value">{{ rma.description or 'N/A' }}</div>
+        </div>
+        {% if rma.photo_url %}
+        <div class="info-row">
+            <div class="info-label">Photo Evidence:</div>
+            <div class="info-value">
+                <img src="{{ rma.photo_url }}" alt="Return photo" class="photo">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Validation & Eligibility</h2>
+        <div class="info-row">
+            <div class="info-label">Eligible:</div>
+            <div class="info-value">
+                {% if rma.is_eligible is not none %}
+                    {% if rma.is_eligible %}<span style="color:#2e7d32;font-weight:bold;">Yes</span>{% else %}<span style="color:#c62828;font-weight:bold;">No</span>{% endif %}
+                {% else %}
+                    <em>Pending validation</em>
+                {% endif %}
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Warranty Valid:</div>
+            <div class="info-value">
+                {% if rma.warranty_valid is not none %}
+                    {% if rma.warranty_valid %}Yes{% else %}No{% endif %}
+                {% else %}
+                    <em>N/A</em>
+                {% endif %}
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Purchase Date Valid:</div>
+            <div class="info-value">
+                {% if rma.purchase_date_valid is not none %}
+                    {% if rma.purchase_date_valid %}Yes{% else %}No{% endif %}
+                {% else %}
+                    <em>N/A</em>
+                {% endif %}
+            </div>
+        </div>
+        {% if rma.validation_notes %}
+        <div class="info-row">
+            <div class="info-label">Validation Notes:</div>
+            <div class="info-value">{{ rma.validation_notes }}</div>
+        </div>
+        {% endif %}
+        {% if rma.validated_by or rma.validated_at %}
+        <div class="info-row">
+            <div class="info-label">Validated By:</div>
+            <div class="info-value">{{ rma.validated_by or 'system' }}{% if rma.validated_at %} on {{ rma.validated_at }}{% endif %}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Returned Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ "%.2f"|format(item.price_at_purchase) }}</td>
+                    <td>${{ "%.2f"|format(item.quantity * item.price_at_purchase) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="text-align: right; font-weight: bold; padding: 10px 0;">
+            Total Return Value: ${{ "%.2f"|format(rma.requested_refund_amount) }}
+        </div>
+    </div>
+    
+    {% if rma.carrier %}
+    <div class="section">
+        <h2>Shipping Information</h2>
+        <div class="info-row">
+            <div class="info-label">Carrier:</div>
+            <div class="info-value">{{ rma.carrier }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Tracking Number:</div>
+            <div class="info-value">{{ rma.tracking_number }}</div>
+        </div>
+        {% if rma.received_at %}
+        <div class="info-row">
+            <div class="info-label">Received Date:</div>
+            <div class="info-value">{{ rma.received_at }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if rma.inspection_notes or rma.disposition %}
+    <div class="section">
+        <h2>Inspection Results</h2>
+        {% if rma.inspection_notes %}
+        <div class="info-row">
+            <div class="info-label">Inspector Notes:</div>
+            <div class="info-value">{{ rma.inspection_notes }}</div>
+        </div>
+        {% endif %}
+        {% if rma.disposition %}
+        <div class="info-row">
+            <div class="info-label">Disposition:</div>
+            <div class="info-value">
+                <strong>{{ rma.disposition }}</strong>
+                {% if rma.disposition == 'RESTOCK' %}
+                <span style="color: #4caf50;">(Items will be restocked)</span>
+                {% elif rma.disposition == 'DISCARD' %}
+                <span style="color: #f44336;">(Items cannot be restocked)</span>
+                {% elif rma.disposition == 'RESHIP' %}
+                <span style="color: #2196f3;">(Replacement will be sent)</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if rma.disposition_notes %}
+        <div class="info-row">
+            <div class="info-label">Notes:</div>
+            <div class="info-value">{{ rma.disposition_notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if refund %}
+    <div class="section">
+        <h2>Refund Details</h2>
+        <div class="refund-box">
+            <div class="refund-amount">${{ "%.2f"|format(refund.amount) }}</div>
+            <p style="margin: 5px 0;">Refund Method: {{ refund.method }}</p>
+            <p style="margin: 5px 0;">Status: <strong>{{ refund.status }}</strong></p>
+            {% if refund.transaction_id %}
+            <p style="margin: 5px 0; font-size: 12px; color: #666;">Transaction ID: {{ refund.transaction_id }}</p>
+            {% endif %}
+            {% if refund.refund_date %}
+            <p style="margin: 5px 0;">Processed: {{ refund.refund_date }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if rma.status in ['RECEIVED', 'INSPECTING'] %}
+    <div class="section">
+        <h2>QA / Technician</h2>
+        <p>This section is for internal processing.</p>
+        <a href="/rma/admin/inspect/{{ rma.id }}" class="back-link">Go to Inspection Console →</a>
+    </div>
+    {% endif %}
+    
+    {% if activity %}
+    <div class="section">
+        <h2>Activity Timeline</h2>
+        <div class="timeline">
+            {% for log in activity %}
+            <div class="timeline-item">
+                <div class="timeline-date">{{ log.created_at }}</div>
+                <div class="timeline-action">{{ log.action }}</div>
+                {% if log.notes %}
+                <div class="timeline-details">{{ log.notes }}</div>
+                {% endif %}
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                    {% if log.actor_type == 'CUSTOMER' %}👤 Customer
+                    {% elif log.actor_type == 'ADMIN' %}🔧 Admin
+                    {% else %}⚙️ System
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <a href="/rma/my-returns" class="back-link">← Back to My Returns</a>
+</body>
+</html>

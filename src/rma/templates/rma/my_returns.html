@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+    <title>My Returns</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; }
+        .success { color: #4caf50; background: #e8f5e9; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-SUBMITTED { background: #fff3cd; color: #856404; }
+        .status-APPROVED { background: #d4edda; color: #155724; }
+        .status-REJECTED { background: #f8d7da; color: #721c24; }
+        .status-SHIPPING { background: #d1ecf1; color: #0c5460; }
+        .status-RECEIVED { background: #cce5ff; color: #004085; }
+        .status-INSPECTING { background: #e7e8ea; color: #383d41; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .status-REPAIRING { background: #ffeaa7; color: #d63031; }
+        .status-REPAIRED { background: #74b9ff; color: #0984e3; }
+        .status-REPLACING { background: #fdcb6e; color: #e17055; }
+        .status-REPLACED { background: #a29bfe; color: #6c5ce7; }
+        .status-REFUNDING { background: #dfe6e9; color: #2d3436; }
+        .status-REFUNDED { background: #e2e3e5; color: #383d41; }
+        .status-STORE_CREDIT { background: #55efc4; color: #00b894; }
+        .status-CREDITED { background: #81ecec; color: #00cec9; }
+        .view-link { color: #1976d2; text-decoration: none; }
+        .view-link:hover { text-decoration: underline; }
+        .no-returns { text-align: center; padding: 40px; color: #666; }
+        .back-link { display: inline-block; margin: 15px 0; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>My Returns</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if rmas %}
+    <table>
+        <thead>
+            <tr>
+                <th>RMA Number</th>
+                <th>Order ID</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rma in rmas %}
+            <tr>
+                <td>
+                    {% if rma.rma_number %}
+                        <strong>{{ rma.rma_number }}</strong>
+                    {% else %}
+                        <em>Pending validation</em>
+                    {% endif %}
+                </td>
+                <td>#{{ rma.sale_id }}</td>
+                <td>{{ rma.reason }}</td>
+                {% set status_to_show = rma.display_status or rma.status %}
+                <td><span class="status status-{{ status_to_show }}">{{ status_to_show }}</span></td>
+                <td>{{ rma.created_at[:10] }}</td>
+                <td>
+                    {% if rma.rma_number %}
+                        <a href="/rma/view/{{ rma.rma_number }}" class="view-link">View Details</a>
+                    {% else %}
+                        <a href="/rma/view-id/{{ rma.id }}" class="view-link">View Details</a>
+                    {% endif %}
+                    {% if rma.status in ['SUBMITTED', 'APPROVED'] %}
+                    | <a href="/rma/cancel-form/{{ rma.id }}" class="view-link" style="color: #f44336;">Cancel</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-returns">
+        <p>You haven't requested any returns yet.</p>
+        <p><a href="/dashboard">Go to Dashboard</a></p>
+    </div>
+    {% endif %}
+    
+    <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+</body>
+</html>

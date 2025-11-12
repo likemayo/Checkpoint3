@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+    <title>RMA Audit Log - {{ rma.rma_number or ('#' ~ rma.id) }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+        .header { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .status { padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: inline-block; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+        .section h2 { margin-top: 0; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+        .timeline { margin: 20px 0; }
+        .timeline-item { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-left: 4px solid #1976d2; 
+            background: #f9f9f9; 
+            position: relative;
+        }
+        .timeline-item.status-change { border-left-color: #28a745; }
+        .timeline-item.inspection { border-left-color: #17a2b8; }
+        .timeline-item.disposition { border-left-color: #ffc107; }
+        .timeline-item.refund { border-left-color: #28a745; }
+        .timeline-item.cancelled { border-left-color: #dc3545; }
+        .timeline-date { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .timeline-action { font-weight: bold; color: #333; margin: 5px 0; font-size: 16px; }
+        .timeline-details { color: #666; font-size: 14px; margin: 5px 0; }
+        .timeline-metadata { 
+            background: #fff; 
+            padding: 10px; 
+            margin-top: 10px; 
+            border-radius: 4px; 
+            font-family: monospace; 
+            font-size: 12px;
+            border: 1px solid #ddd;
+        }
+        .back-link { display: inline-block; margin: 15px 0; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .summary-box { background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .summary-box h3 { margin-top: 0; }
+        .info-row { display: flex; padding: 5px 0; }
+        .info-label { font-weight: bold; width: 180px; color: #666; }
+        .info-value { flex: 1; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>RMA Audit Log</h1>
+        <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+        <p>Status: <span class="status status-{{ rma.status }}">{{ rma.status }}</span></p>
+        <p style="margin: 5px 0; color: #666;">Audit trail showing all actions and state changes for this RMA.</p>
+    </div>
+    
+    <div class="summary-box">
+        <h3>RMA Summary</h3>
+        <div class="info-row">
+            <div class="info-label">Created:</div>
+            <div class="info-value">{{ rma.created_at }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Closed:</div>
+            <div class="info-value">{{ rma.closed_at or 'Not closed' }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Customer:</div>
+            <div class="info-value">User #{{ rma.user_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Order:</div>
+            <div class="info-value">#{{ rma.sale_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Disposition:</div>
+            <div class="info-value">{{ rma.disposition or 'N/A' }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Refund Amount:</div>
+            <div class="info-value">${{ "%.2f"|format((rma.refund_amount_cents or 0) / 100.0) }}</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Activity Timeline ({{ activities|length }} events)</h2>
+        <div class="timeline">
+            {% for activity in activities %}
+            <div class="timeline-item {{ activity.action|lower|replace('_', '-') }}">
+                <div class="timeline-date">{{ activity.created_at }}</div>
+                <div class="timeline-action">{{ activity.action }}</div>
+                
+                {% if activity.old_status or activity.new_status %}
+                <div class="timeline-details">
+                    Status: 
+                    {% if activity.old_status %}<strong>{{ activity.old_status }}</strong>{% endif %}
+                    {% if activity.old_status and activity.new_status %} → {% endif %}
+                    {% if activity.new_status %}<strong>{{ activity.new_status }}</strong>{% endif %}
+                </div>
+                {% endif %}
+                
+                {% if activity.actor %}
+                <div class="timeline-details">Actor: <strong>{{ activity.actor }}</strong></div>
+                {% endif %}
+                
+                {% if activity.notes %}
+                <div class="timeline-details">{{ activity.notes }}</div>
+                {% endif %}
+                
+                {% if activity.metadata %}
+                <div class="timeline-metadata">
+                    Metadata: {{ activity.metadata }}
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p style="color:#666;text-align:center;padding:20px;">No activity log entries found.</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Data Retention Notice</h2>
+        <p>This audit log is retained for compliance and dispute resolution purposes. All RMA records, including customer communications, inspection results, and financial transactions, are preserved according to our data retention policy.</p>
+        <p><strong>Retention Period:</strong> 7 years from case closure date</p>
+        <p><strong>Access:</strong> Restricted to authorized personnel only</p>
+    </div>
+    
+    <a href="/rma/admin/completed" class="back-link">← Back to Completed RMAs</a>
+</body>
+</html>

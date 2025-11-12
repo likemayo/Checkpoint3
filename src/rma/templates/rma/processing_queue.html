@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <title>Refund Processing Queue</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f5f5f5; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge.DISPOSITION { background: #fff3cd; color: #856404; }
+    .badge.PROCESSING { background: #cce5ff; color: #004085; }
+    .badge.REFUND { background: #d4edda; color: #155724; }
+    .badge.REPLACEMENT { background: #d1ecf1; color: #0c5460; }
+    .badge.REPAIR { background: #e7e8ea; color: #383d41; }
+    .badge.REJECT { background: #f8d7da; color: #721c24; }
+    .badge.STORE_CREDIT { background: #fff3cd; color: #856404; }
+    .actions a { margin-right: 8px; color: #1976d2; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .btn-process { background: #28a745; color: white; padding: 4px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; }
+    .btn-process:hover { background: #218838; }
+    .nav-links { margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 8px; }
+    .nav-links a { margin-right: 15px; padding: 8px 16px; background: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    .nav-links a:hover { background: #1565c0; }
+  </style>
+</head>
+<body>
+  <h1>Refund & Processing Queue</h1>
+  <p>RMAs with disposition decisions awaiting financial processing (refunds, replacements, etc.).</p>
+
+  <div class="nav-links">
+    <a href="/rma/admin/dashboard">🏠 Back to Admin Dashboard</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>RMA Number</th>
+        <th>Order</th>
+        <th>User</th>
+        <th>Status</th>
+        <th>Disposition</th>
+        <th>Amount</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rma in rmas %}
+      <tr>
+        <td>{{ rma.id }}</td>
+        <td>{{ rma.rma_number or '-' }}</td>
+        <td>#{{ rma.sale_id }}</td>
+        <td>{{ rma.user_id }}</td>
+        <td><span class="badge {{ rma.status }}">{{ rma.status }}</span></td>
+        <td><span class="badge {{ rma.disposition }}">{{ rma.disposition }}</span></td>
+        <td>${{ "%.2f"|format((rma.refund_amount_cents or 0) / 100.0) }}</td>
+        <td class="actions">
+          {% if rma.disposition == 'REFUND' and rma.status in ('DISPOSITION', 'PROCESSING') %}
+            <a href="/rma/admin/process-refund/{{ rma.id }}" class="btn-process">Process Refund</a>
+          {% elif rma.disposition == 'REPLACEMENT' and rma.status in ('DISPOSITION', 'PROCESSING') %}
+            <a href="/rma/admin/process-replacement/{{ rma.id }}" class="btn-process">Process Replacement</a>
+          {% elif rma.disposition == 'REPAIR' and rma.status == 'DISPOSITION' %}
+            <a href="/rma/admin/process-repair/{{ rma.id }}" class="btn-process">Process Repair</a>
+          {% elif rma.disposition == 'REPAIR' and rma.status == 'PROCESSING' %}
+            <a href="/rma/admin/complete-repair/{{ rma.id }}" class="btn-process">Complete Repair</a>
+          {% elif rma.disposition == 'STORE_CREDIT' and rma.status in ('DISPOSITION', 'PROCESSING') %}
+            <a href="/rma/admin/process-credit/{{ rma.id }}" class="btn-process">Issue Credit</a>
+          {% endif %}
+          <a href="/rma/admin/view-processing/{{ rma.id }}">View Details</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:#666;">No RMAs awaiting processing.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="margin-top: 16px;">
+    <a href="/rma/admin/disposition-queue">← Disposition Queue</a> |
+    <a href="/rma/admin/queue">Inspection Queue</a> |
+    <a href="/rma/admin/warehouse">Warehouse Queue</a> |
+    <a href="/rma/admin/completed">Completed RMAs →</a>
+  </p>
+</body>
+</html>

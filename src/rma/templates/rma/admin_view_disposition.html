@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+    <title>Admin - RMA Disposition Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; }
+        .header { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .status { padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; display: inline-block; }
+        .status-SUBMITTED { background: #fff3cd; color: #856404; }
+        .status-APPROVED { background: #d4edda; color: #155724; }
+        .status-REJECTED { background: #f8d7da; color: #721c24; }
+        .status-SHIPPING { background: #d1ecf1; color: #0c5460; }
+        .status-RECEIVED { background: #cce5ff; color: #004085; }
+        .status-INSPECTING { background: #e7e8ea; color: #383d41; }
+        .status-INSPECTED { background: #d1ecf1; color: #0c5460; }
+        .status-DISPOSITION { background: #fff3cd; color: #856404; }
+        .status-PROCESSING { background: #cce5ff; color: #004085; }
+        .status-COMPLETED { background: #d4edda; color: #155724; }
+        .status-CANCELLED { background: #f8d7da; color: #721c24; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: white; }
+        .section h2 { margin-top: 0; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: bold; width: 180px; color: #666; }
+        .info-value { flex: 1; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .timeline { margin: 20px 0; }
+        .timeline-item { padding: 15px; margin: 10px 0; border-left: 3px solid #1976d2; background: #f9f9f9; }
+        .timeline-date { font-size: 12px; color: #666; }
+        .timeline-action { font-weight: bold; color: #333; margin: 5px 0; }
+        .timeline-details { color: #666; font-size: 14px; }
+        .back-link { display: inline-block; margin: 15px 0; color: #1976d2; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .photo { max-width: 300px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .admin-actions { background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .admin-actions button { padding: 8px 16px; margin: 5px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .admin-actions button:hover { background: #f57c00; }
+        .admin-actions a { padding: 8px 16px; margin: 5px; background: #ff9800; color: white; border: none; border-radius: 4px; text-decoration: none; display: inline-block; }
+        .admin-actions a:hover { background: #f57c00; }
+        .disposition-result { background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50; }
+        .disposition-result.rejected { background: #ffebee; border-left: 4px solid #f44336; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>RMA Disposition Details (Admin)</h1>
+        <div>RMA: <strong>{{ rma.rma_number or ('#' ~ rma.id) }}</strong></div>
+        <p>Status: <span class="status status-{{ rma.status }}">{{ rma.status }}</span></p>
+        <p style="margin: 5px 0; color: #666;">Submitted: {{ rma.created_at }}</p>
+    </div>
+    
+    <!-- Disposition Actions -->
+    {% if rma.status in ['INSPECTED', 'DISPOSITION'] %}
+    <div class="admin-actions">
+        <h3 style="margin-top:0;">Warranty Team Actions</h3>
+        {% if rma.status == 'INSPECTED' or (rma.status == 'DISPOSITION' and not rma.disposition) %}
+        <a href="/rma/admin/disposition/{{ rma.id }}">→ Make Disposition Decision</a>
+        <p style="font-size:12px;color:#666;margin:8px 0 0;">Review inspection results and decide: REFUND, REPLACEMENT, REPAIR, STORE_CREDIT, or REJECT.</p>
+        {% elif rma.disposition %}
+        <a href="/rma/admin/processing-queue" style="background: #28a745;">→ Go to Processing Queue</a>
+        <p style="font-size:12px;color:#666;margin:8px 0 0;">Disposition decided. Proceed to processing queue to handle refund/replacement.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Disposition Decision Result -->
+    {% if rma.disposition %}
+    <div class="section">
+        <h2>Disposition Decision</h2>
+        <div class="disposition-result {% if rma.disposition == 'REJECT' %}rejected{% endif %}">
+            <div class="info-row">
+                <div class="info-label">Decision:</div>
+                <div class="info-value" style="font-weight:bold;font-size:16px;">{{ rma.disposition }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Reason:</div>
+                <div class="info-value">{{ rma.disposition_reason or 'N/A' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Decided By:</div>
+                <div class="info-value">{{ rma.disposition_decided_by }}{% if rma.disposition_decided_at %} on {{ rma.disposition_decided_at }}{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Inspection Results -->
+    {% if rma.inspection_result %}
+    <div class="section">
+        <h2>Inspection Results</h2>
+        <div class="info-row">
+            <div class="info-label">Result:</div>
+            <div class="info-value" style="font-weight:bold;">{{ rma.inspection_result }}</div>
+        </div>
+        {% if rma.inspection_notes %}
+        <div class="info-row">
+            <div class="info-label">Notes:</div>
+            <div class="info-value">{{ rma.inspection_notes }}</div>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <div class="info-label">Inspected By:</div>
+            <div class="info-value">{{ rma.inspected_by }}{% if rma.inspection_completed_at %} on {{ rma.inspection_completed_at }}{% endif %}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="section">
+        <h2>Return Information</h2>
+        <div class="info-row">
+            <div class="info-label">Order ID:</div>
+            <div class="info-value">#{{ rma.sale_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Customer ID:</div>
+            <div class="info-value">{{ rma.user_id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Reason:</div>
+            <div class="info-value">{{ rma.reason }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Description:</div>
+            <div class="info-value">{{ rma.description or 'N/A' }}</div>
+        </div>
+        {% if rma.photo_url %}
+        <div class="info-row">
+            <div class="info-label">Photo Evidence:</div>
+            <div class="info-value">
+                <img src="{{ rma.photo_url }}" alt="Return photo" class="photo">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Shipping Information</h2>
+        <div class="info-row">
+            <div class="info-label">Carrier:</div>
+            <div class="info-value">{{ rma.shipping_carrier or 'Not provided' }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Tracking Number:</div>
+            <div class="info-value">{{ rma.tracking_number or 'Not provided' }}</div>
+        </div>
+        {% if rma.shipped_at %}
+        <div class="info-row">
+            <div class="info-label">Shipped At:</div>
+            <div class="info-value">{{ rma.shipped_at }}</div>
+        </div>
+        {% endif %}
+        {% if rma.received_at %}
+        <div class="info-row">
+            <div class="info-label">Received At:</div>
+            <div class="info-value">{{ rma.received_at }}{% if rma.received_by %} by {{ rma.received_by }}{% endif %}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Validation & Eligibility</h2>
+        <div class="info-row">
+            <div class="info-label">Eligible:</div>
+            <div class="info-value">
+                {% if rma.is_eligible is not none %}
+                    {% if rma.is_eligible %}<span style="color:#2e7d32;font-weight:bold;">Yes</span>{% else %}<span style="color:#c62828;font-weight:bold;">No</span>{% endif %}
+                {% else %}
+                    <em>Pending validation</em>
+                {% endif %}
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Warranty Valid:</div>
+            <div class="info-value">
+                {% if rma.warranty_valid is not none %}
+                    {% if rma.warranty_valid %}Yes{% else %}No{% endif %}
+                {% else %}
+                    <em>N/A</em>
+                {% endif %}
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Purchase Date Valid:</div>
+            <div class="info-value">
+                {% if rma.purchase_date_valid is not none %}
+                    {% if rma.purchase_date_valid %}Yes{% else %}No{% endif %}
+                {% else %}
+                    <em>N/A</em>
+                {% endif %}
+            </div>
+        </div>
+        {% if rma.validation_notes %}
+        <div class="info-row">
+            <div class="info-label">Validation Notes:</div>
+            <div class="info-value">{{ rma.validation_notes }}</div>
+        </div>
+        {% endif %}
+        {% if rma.validated_by or rma.validated_at %}
+        <div class="info-row">
+            <div class="info-label">Validated By:</div>
+            <div class="info-value">{{ rma.validated_by or 'system' }}{% if rma.validated_at %} on {{ rma.validated_at }}{% endif %}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>Returned Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }} (ID: {{ item.product_id }})</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ "%.2f"|format(item.price_at_purchase or 0) }}</td>
+                    <td>${{ "%.2f"|format((item.price_at_purchase or 0) * item.quantity) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if rma.requested_refund_amount %}
+        <div style="text-align: right; margin-top: 10px; font-size: 16px;">
+            <strong>Requested Refund Amount: ${{ "%.2f"|format(rma.requested_refund_amount) }}</strong>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if rma.refund_amount or rma.replacement_order_id %}
+    <div class="section">
+        <h2>Resolution Details</h2>
+        {% if rma.refund_amount %}
+        <div class="info-row">
+            <div class="info-label">Refund Amount:</div>
+            <div class="info-value">${{ "%.2f"|format(rma.refund_amount) }}</div>
+        </div>
+        {% if rma.refund_method %}
+        <div class="info-row">
+            <div class="info-label">Refund Method:</div>
+            <div class="info-value">{{ rma.refund_method }}</div>
+        </div>
+        {% endif %}
+        {% if rma.refund_reference %}
+        <div class="info-row">
+            <div class="info-label">Refund Reference:</div>
+            <div class="info-value">{{ rma.refund_reference }}</div>
+        </div>
+        {% endif %}
+        {% if rma.refund_processed_at %}
+        <div class="info-row">
+            <div class="info-label">Processed At:</div>
+            <div class="info-value">{{ rma.refund_processed_at }}{% if rma.refund_processed_by %} by {{ rma.refund_processed_by }}{% endif %}</div>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        {% if rma.replacement_order_id %}
+        <div class="info-row">
+            <div class="info-label">Replacement Order:</div>
+            <div class="info-value">#{{ rma.replacement_order_id }}</div>
+        </div>
+        {% if rma.replacement_tracking %}
+        <div class="info-row">
+            <div class="info-label">Replacement Tracking:</div>
+            <div class="info-value">{{ rma.replacement_tracking }}</div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if rma.completed_at or rma.cancelled_at %}
+    <div class="section">
+        <h2>Status History</h2>
+        {% if rma.completed_at %}
+        <div class="info-row">
+            <div class="info-label">Completed At:</div>
+            <div class="info-value">{{ rma.completed_at }}{% if rma.completed_by %} by {{ rma.completed_by }}{% endif %}</div>
+        </div>
+        {% endif %}
+        {% if rma.cancelled_at %}
+        <div class="info-row">
+            <div class="info-label">Cancelled At:</div>
+            <div class="info-value">{{ rma.cancelled_at }}{% if rma.cancelled_by %} by {{ rma.cancelled_by }}{% endif %}</div>
+        </div>
+        {% if rma.cancel_reason %}
+        <div class="info-row">
+            <div class="info-label">Cancel Reason:</div>
+            <div class="info-value">{{ rma.cancel_reason }}</div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <a href="/rma/admin/disposition-queue" class="back-link">← Back to Disposition Queue</a>
+</body>
+</html>

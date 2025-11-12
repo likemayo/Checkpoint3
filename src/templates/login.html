@@ -1,11 +1,26 @@
 <!doctype html>
 <html>
-<head><title>Login</title></head>
+<head>
+    <title>Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+        h1 { text-align: center; }
+        .role-selector { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; }
+        .role-selector label { display: block; margin: 10px 0; cursor: pointer; }
+        .role-selector input[type="radio"] { margin-right: 10px; }
+        .form-group { margin: 15px 0; }
+        label { font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .register-link { text-align: center; margin-top: 20px; }
+    </style>
+</head>
 <body>
     <h1>Login</h1>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul>
+        <ul style="color: red; list-style: none; padding: 0;">
         {% for category, message in messages %}
           <li>[{{ category }}] {{ message }}</li>
         {% endfor %}
@@ -13,20 +28,66 @@
       {% endif %}
     {% endwith %}
     
-    <form method="post" action="/login">
-        <p>
-            <label>Username:</label><br>
-            <input type="text" name="username" required>
-        </p>
-        <p>
-            <label>Password:</label><br>
-            <input type="password" name="password" required>
-        </p>
-        <p>
+    <div class="role-selector">
+        <strong>Select Role:</strong>
+        <label>
+            <input type="radio" name="role" value="customer" checked onchange="updateLoginForm(this.value)">
+            Customer
+        </label>
+        <label>
+            <input type="radio" name="role" value="admin" onchange="updateLoginForm(this.value)">
+            Admin
+        </label>
+    </div>
+    
+    <form method="post" action="/login" id="loginForm">
+        <div class="form-group">
+            <label>Username:</label>
+            <input type="text" name="username" id="usernameField" required>
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" name="password" id="passwordField" required>
+        </div>
+        <div class="form-group">
             <button type="submit">Login</button>
-        </p>
+        </div>
     </form>
     
-    <p><a href="/register">Don't have an account? Register</a></p>
+    <div class="register-link">
+        <a href="/register">Don't have an account? Register</a>
+    </div>
+    
+    <script>
+        function updateLoginForm(role) {
+            const form = document.getElementById('loginForm');
+            const usernameField = document.getElementById('usernameField');
+            const passwordField = document.getElementById('passwordField');
+            const usernameLabel = document.querySelector('.form-group label');
+            
+            if (role === 'admin') {
+                // Admin login uses same form but with admin username
+                form.action = '/login';
+                usernameField.placeholder = 'Admin username (without "Admin: " prefix)';
+                passwordField.style.display = 'block';
+                passwordField.required = true;
+                usernameLabel.textContent = 'Admin Username:';
+                usernameField.name = 'username';
+                usernameField.type = 'text';
+            } else {
+                // Customer login (default)
+                form.action = '/login';
+                usernameField.placeholder = '';
+                passwordField.style.display = 'block';
+                passwordField.required = true;
+                usernameLabel.textContent = 'Username:';
+                usernameField.name = 'username';
+                usernameField.type = 'text';
+            }
+        }
+        
+        // Initialize on page load
+        updateLoginForm('customer');
+    </script>
 </body>
 </html>

@@ -409,12 +409,13 @@
                     document.getElementById('serverErrors').textContent = formatNumber(data.errors.by_type['5xx']);
                     
                     // Performance
+                    // Use one decimal to avoid rounding very small latencies to 0ms
                     document.getElementById('avgResponseTime').innerHTML = 
-                        data.performance.avg_response_time_ms.toFixed(0) + '<span style="font-size: 20px;">ms</span>';
+                        data.performance.avg_response_time_ms.toFixed(1) + '<span style="font-size: 20px;">ms</span>';
                     document.getElementById('p95ResponseTime').textContent = 
-                        data.performance.p95_response_time_ms.toFixed(0);
+                        data.performance.p95_response_time_ms.toFixed(1);
                     document.getElementById('p99ResponseTime').textContent = 
-                        data.performance.p99_response_time_ms.toFixed(0);
+                        data.performance.p99_response_time_ms.toFixed(1);
                     
                     showRefreshIndicator();
                 }

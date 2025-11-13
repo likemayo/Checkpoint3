@@ -80,11 +80,27 @@ class MetricsCollector:
         return self.gauges.get(key, 0.0)
     
     def get_histogram_stats(self, name: str, labels: Optional[Dict] = None) -> Dict:
-        """Get statistics for a histogram metric."""
-        key = self._make_key(name, labels)
-        observations = self.histograms.get(key, deque())
+        """Get statistics for a histogram metric.
         
-        if not observations:
+        If labels is None, aggregate observations across all label variants for
+        this histogram name. This lets callers fetch global stats even when
+        observations were recorded with per-endpoint/method/status labels.
+        """
+        # When labels are provided, look up the exact series
+        if labels is not None:
+            key = self._make_key(name, labels)
+            observations = self.histograms.get(key, deque())
+            values = sorted([obs['value'] for obs in observations])
+        else:
+            # Aggregate across all series that match this histogram name
+            values = []
+            prefix = f"{name}{'{'}"
+            for k, dq in self.histograms.items():
+                if k == name or k.startswith(prefix):
+                    values.extend(obs['value'] for obs in dq)
+            values.sort()
+        
+        if not values:
             return {
                 'count': 0,
                 'sum': 0,
@@ -96,8 +112,16 @@ class MetricsCollector:
                 'p99': 0
             }
         
-        values = sorted([obs['value'] for obs in observations])
         count = len(values)
+        
+        # Clamp percentile index to valid range
+        def pct(values_list, p):
+            if not values_list:
+                return 0
+            idx = int(p * len(values_list))
+            if idx >= len(values_list):
+                idx = len(values_list) - 1
+            return values_list[idx]
         
         return {
             'count': count,
@@ -105,9 +129,9 @@ class MetricsCollector:
             'min': values[0],
             'max': values[-1],
             'avg': sum(values) / count,
-            'p50': values[int(count * 0.50)] if count > 0 else 0,
-            'p95': values[int(count * 0.95)] if count > 0 else 0,
-            'p99': values[int(count * 0.99)] if count > 0 else 0
+            'p50': pct(values, 0.50),
+            'p95': pct(values, 0.95),
+            'p99': pct(values, 0.99)
         }
     
     def get_rate(self, name: str, window_seconds: int = 60, labels: Optional[Dict] = None) -> float:

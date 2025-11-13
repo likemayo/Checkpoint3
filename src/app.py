@@ -20,8 +20,9 @@ from .partners.partner_ingest_service import validate_products, upsert_products
 
 # Import observability components
 try:
-    from .observability.structured_logger import app_logger, log_request
-    from .observability.metrics_collector import metrics_collector, track_request_duration
+    # Use absolute imports to ensure a single module instance across the app
+    from src.observability.structured_logger import app_logger, log_request
+    from src.observability.metrics_collector import metrics_collector, track_request_duration
     OBSERVABILITY_ENABLED = True
 except ImportError:
     OBSERVABILITY_ENABLED = False
@@ -123,6 +124,9 @@ def create_app() -> Flask:
                 
                 # Track HTTP errors
                 if response.status_code >= 400:
+                    # Increment overall error counter for dashboard totals/rates
+                    metrics_collector.increment_counter('errors_total')
+                    metrics_collector.record_event('errors_total')
                     if 400 <= response.status_code < 500:
                         metrics_collector.increment_counter('http_errors', labels={'type': '4xx'})
                     elif 500 <= response.status_code < 600:
@@ -137,6 +141,9 @@ def create_app() -> Flask:
     def not_found_error(error):
         """Handle 404 errors with observability"""
         if OBSERVABILITY_ENABLED:
+            # Count both category and total for dashboard visibility
+            metrics_collector.increment_counter('errors_total')
+            metrics_collector.record_event('errors_total')
             metrics_collector.increment_counter('http_errors', labels={'type': '4xx'})
             app_logger.warning(f"404 Not Found: {request.path}")
         return render_template('404.html'), 404
@@ -145,6 +152,9 @@ def create_app() -> Flask:
     def internal_error(error):
         """Handle 500 errors with observability"""
         if OBSERVABILITY_ENABLED:
+            # Count both category and total for dashboard visibility
+            metrics_collector.increment_counter('errors_total')
+            metrics_collector.record_event('errors_total')
             metrics_collector.increment_counter('http_errors', labels={'type': '5xx'})
             app_logger.error(f"500 Internal Server Error", error=str(error))
         return render_template('500.html'), 500
@@ -154,6 +164,7 @@ def create_app() -> Flask:
         """Handle rate limit errors"""
         if OBSERVABILITY_ENABLED:
             metrics_collector.increment_counter('errors_total', labels={'type': 'rate_limit'})
+            metrics_collector.record_event('errors_total')
             app_logger.warning("Rate limit exceeded", ip=request.remote_addr)
         return {'error': 'Rate limit exceeded. Please try again later.'}, 429
 
@@ -678,6 +689,7 @@ def create_app() -> Flask:
                 metrics_collector.increment_counter('orders_total')
                 metrics_collector.increment_counter('orders_total', labels={'status': 'failed'})
                 metrics_collector.increment_counter('errors_total', labels={'type': 'checkout'})
+                metrics_collector.record_event('errors_total')
                 app_logger.error(
                     "Checkout failed",
                     user_id=user_id,

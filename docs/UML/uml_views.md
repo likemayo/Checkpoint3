@@ -1,10 +1,14 @@
-# UML Diagrams
+# UML Diagrams - Checkpoint 3
+
+This document presents the 4+1 Architectural Views for the complete retail system, including Flash Sales, Partner Integration, **RMA (Returns & Refunds)**, and **Observability** modules.
+
+---
 
 ## Logical View: Class Diagram
 
 ```mermaid
 classDiagram
-    %% ====== FLASH SALES MODULE (Your Work) ======
+    %% ====== FLASH SALES MODULE ======
     
     %% Core Business Logic
     class FlashSaleManager {
@@ -66,7 +70,7 @@ classDiagram
         +process_payment_with_retry(method: str, amount_cents: int) Tuple
     }
 
-    %% ====== PARTNER INTEGRATION MODULE (Vanessa's Work) ======
+    %% ====== PARTNER INTEGRATION MODULE ======
     
     class PartnerIngestService {
         -conn: Connection
@@ -101,6 +105,80 @@ classDiagram
     class InputValidator {
         +validate_feed(data) ValidationResult
         +sanitize_input(data) str
+    }
+
+    %% ====== RMA (RETURNS & REFUNDS) MODULE ======
+    
+    class RMAManager {
+        -conn: Connection
+        +submit_rma(user_id: int, sale_id: int, reason: str, photo_path: str) RMARequest
+        +get_user_rmas(user_id: int) List~RMARequest~
+        +transition_status(rma_id: int, new_status: str, actor: str)
+        +set_disposition(rma_id: int, disposition: str, actor: str)
+        +validate_transition(current: str, new: str) bool
+    }
+
+    class RMARequest {
+        +id: int
+        +user_id: int
+        +sale_id: int
+        +status: str
+        +disposition: str
+        +reason: str
+        +photo_path: str
+        +created_at: datetime
+        +updated_at: datetime
+    }
+
+    class RMADisposition {
+        <<enumeration>>
+        REFUND
+        REPLACEMENT
+        REPAIR
+        STORE_CREDIT
+        REJECT
+    }
+
+    class RMAStatus {
+        <<enumeration>>
+        SUBMITTED
+        VALIDATING
+        APPROVED
+        SHIPPING
+        RECEIVED
+        INSPECTING
+        INSPECTED
+        DISPOSITION
+        PROCESSING
+        COMPLETED
+        CANCELLED
+    }
+
+    %% ====== OBSERVABILITY MODULE ======
+    
+    class MetricsCollector {
+        -counters: Dict
+        -gauges: Dict
+        -histograms: Dict
+        +increment_counter(name: str, value: int, labels: Dict)
+        +set_gauge(name: str, value: float, labels: Dict)
+        +observe(name: str, value: float, labels: Dict)
+        +get_business_metrics() Dict
+        +get_histogram_stats(name: str) Dict
+    }
+
+    class StructuredLogger {
+        -log_level: str
+        +info(message: str, **context)
+        +warning(message: str, **context)
+        +error(message: str, **context)
+        +critical(message: str, **context)
+    }
+
+    class MonitoringDashboard {
+        +get_metrics() Dict
+        +get_recent_logs() List
+        +get_system_health() Dict
     }
 
     %% ====== SHARED MODULES ======
@@ -158,11 +236,74 @@ classDiagram
     
     PartnerAdapter --> InputValidator : uses
 
+    %% RMA relationships
+    RMAManager --> SalesRepo : validates sale
+    RMAManager --> RMARequest : manages
+    RMAManager --> RMAStatus : enforces
+    RMAManager --> RMADisposition : applies
+    RMAManager --> MetricsCollector : tracks metrics
+    
+    %% Observability relationships
+    SalesRepo --> MetricsCollector : records metrics
+    PartnerIngestService --> MetricsCollector : tracks ingestion
+    FlashSaleManager --> MetricsCollector : records sales
+    RMAManager --> StructuredLogger : logs transitions
+    MonitoringDashboard --> MetricsCollector : displays
+    MonitoringDashboard --> StructuredLogger : shows logs
+
     %% Notes
     note for FlashSaleManager "Flash Sales Module:\nManages time-based discounts"
     note for PartnerIngestService "Partner Integration Module:\nIngests external product feeds"
+    note for RMAManager "RMA Module:\n10-stage workflow with\n5 disposition types"
+    note for MetricsCollector "Observability:\nTracks orders, refunds,\nperformance, errors"
     note for RateLimiter "Shared Tactic:\nProtects both flash sales\nand partner endpoints"
     note for CircuitBreaker "Availability Pattern:\nPayment service protection"
+```
+
+## Process View: RMA Workflow Sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Customer
+  participant A as Flask App
+  participant RM as RMAManager
+  participant DB as SQLite
+  participant MC as MetricsCollector
+  participant Admin as Admin/Support
+
+  C->>A: POST /rma/submit (sale_id, reason, photo)
+  A->>RM: submit_rma(user_id, sale_id, reason, photo_path)
+  RM->>DB: SELECT sale WHERE id=? AND user_id=?
+  alt sale valid
+    RM->>DB: INSERT INTO rma_requests (status='SUBMITTED')
+    RM->>MC: increment_counter('refunds_total')
+    RM->>MC: record_event('refunds_total')
+    RM-->>A: rma_id
+    A-->>C: RMA request submitted
+  else sale invalid
+    RM-->>A: error (invalid sale)
+  end
+
+  Admin->>A: POST /admin/rma/:id/validate
+  A->>RM: transition_status(rma_id, 'APPROVED', 'admin')
+  RM->>DB: SELECT status FROM rma_requests WHERE id=?
+  RM->>RM: validate_transition('SUBMITTED', 'APPROVED')
+  alt valid transition
+    RM->>DB: UPDATE rma_requests SET status='APPROVED'
+    RM->>DB: INSERT INTO audit_log (action, actor, timestamp)
+    RM-->>A: success
+  else invalid transition
+    RM-->>A: error (illegal transition)
+  end
+
+  Admin->>A: POST /admin/rma/:id/disposition (REFUND)
+  A->>RM: set_disposition(rma_id, 'REFUND', 'admin')
+  RM->>DB: UPDATE rma_requests SET disposition='REFUND', status='COMPLETED'
+  RM->>DB: UPDATE sale SET status='REFUNDED'
+  RM->>DB: INSERT INTO audit_log
+  RM->>MC: increment metrics (approved_count)
+  RM-->>A: disposition set
+  A-->>Admin: RMA completed
 ```
 
 ## Process View: System Sequence Diagram (Checkout)
@@ -245,7 +386,72 @@ sequenceDiagram
 ```
 
 
-## Deployment View
+## Deployment View (Docker Compose Architecture)
+
+```mermaid
+flowchart TD
+  subgraph Internet[Internet]
+    UB["User Browser\n(Client)"]
+    PartnerSys["Partner Systems\n(API clients)"]
+  end
+
+  subgraph Docker["Docker Compose Environment"]
+    subgraph WebContainer["Web Container (checkpoint3-web)"]
+      WA["Flask App\n- routes\n- auth\n- RMA workflows\n- observability middleware"]
+    end
+
+    subgraph WorkerContainer["Worker Container (checkpoint3-worker)"]
+      WK["Background Worker\n- ingest queue\n- diagnostics processor"]
+    end
+
+    subgraph SharedVolume["Shared Docker Volume (db-data)"]
+      DB[("SQLite DB\n(app.sqlite)")]
+      Logs["Logs\n(app.log)"]
+      Uploads["Uploads\n(photos)"]
+    end
+
+    subgraph Monitoring["Monitoring (Built-in)"]
+      Dashboard["Monitoring Dashboard\n/monitoring/dashboard"]
+      Metrics["MetricsCollector\n(in-memory + DB)"]
+      Logger["StructuredLogger\n(JSON logs)"]
+    end
+  end
+
+  subgraph External[External Services]
+    PAY["Payment Provider\n(mock)"]
+  end
+
+  UB --> WA
+  PartnerSys --> WA
+  WA --> DB
+  WK --> DB
+  WA --> Logs
+  WK --> Logs
+  WA --> Uploads
+  WA --> PAY
+  WA --> Dashboard
+  Dashboard --> Metrics
+  Dashboard --> Logger
+  Metrics --> DB
+  Logger --> Logs
+
+  style Internet fill:#f9f,stroke:#333,stroke-width:2px
+  style Docker fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+  style WebContainer fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+  style WorkerContainer fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+  style SharedVolume fill:#ffe0b2,stroke:#e64a19,stroke-width:2px
+  style Monitoring fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  style External fill:#fef,stroke:#333,stroke-width:1px
+```
+
+**Key Features:**
+- **Persistent Storage**: Docker volume ensures data survives container restarts
+- **Smart Seeding**: First-run database seeding (preserves data on subsequent starts)
+- **Health Checks**: `/health` endpoint for orchestration
+- **Port Mapping**: Web on 5000, accessible via localhost
+- **Environment Variables**: `APP_DB_PATH`, `SEED_DATA`, `OBSERVABILITY_ENABLED`
+
+## Deployment View (Legacy - Pre-Docker)
 ```mermaid
 flowchart TD
   %% Deployment diagram with web tier, worker, storage, cache and external services
@@ -294,6 +500,72 @@ flowchart TD
 ```mermaid
 flowchart TB
 subgraph App[Application Modules]
+    routes["src/app.py / src/main.py\n- HTTP routes / blueprints\n- observability middleware"]
+    dao["src/dao.py\n- SalesRepo, DB access"]
+    product_repo["src/product_repo.py\n- ProductRepo"]
+    payment["src/payment.py\n- Payment Adapters & resilience"]
+    
+    partners_routes["src/partners/routes.py\n- ingest endpoints, job status"]
+    partners_svc["src/partners/partner_ingest_service.py\n- validation, upsert"]
+    partners_adapters["src/partners/partner_adapters.py\n- feed parsers"]
+    ingest_queue["src/partners/ingest_queue.py\n- enqueue, worker loop"]
+    integrability["src/partners/integrability.py\n- contract, validator"]
+    
+    flash["src/flash_sales/\n- manager, cache, rate-limiter"]
+    resilience["src/flash_sales/payment_resilience.py\n- retry & circuit breaker"]
+    
+    rma_routes["src/rma/routes.py\n- RMA workflow endpoints"]
+    rma_manager["src/rma/manager.py\n- RMAManager, transitions"]
+    
+    observability["src/observability/\n- metrics_collector.py\n- structured_logger.py"]
+    monitoring["src/templates/monitoring/\n- dashboard.html"]
+    
+    worker["Background Worker\n- ingest_queue.process_next_job_once"]
+    diagnostics["DiagnosticsOffload (table/object store)"]
+  end
+
+  routes --> dao
+  routes --> product_repo
+  routes --> payment
+  routes --> partners_routes
+  routes --> rma_routes
+  routes --> observability
+  
+  partners_routes --> partners_svc
+  partners_routes --> partners_adapters
+  partners_svc --> ingest_queue
+  partners_svc --> diagnostics
+  ingest_queue --> worker
+  worker --> partners_svc
+  worker --> diagnostics
+  
+  routes --> flash
+  flash --> resilience
+  resilience --> payment
+  
+  rma_routes --> rma_manager
+  rma_manager --> dao
+  rma_manager --> observability
+  
+  monitoring --> observability
+  
+  dao --> dbNode[("SQLite DB")]
+  payment --> extPay["External Payment"]
+  observability --> dbNode
+```
+
+**Module Descriptions:**
+- **src/app.py**: Main Flask app with before_request/after_request middleware for observability
+- **src/rma/**: Returns & Refunds module with 10-stage workflow and 5 disposition types
+- **src/observability/**: Metrics collection (hybrid DB + in-memory) and structured logging
+- **src/templates/monitoring/**: Admin-only monitoring dashboard with auto-refresh
+- **docker-entrypoint.sh**: Smart seeding script (only seeds if DB is empty)
+
+## Implementation View: Package / Module Diagram (Legacy - Pre-Checkpoint 3)
+
+```mermaid
+flowchart TB
+subgraph App[Application Modules]
     routes["src/app.py / src/main.py\n- HTTP routes / blueprints"]
     dao["src/dao.py\n- SalesRepo, DB access"]
     product_repo["src/product_repo.py\n- ProductRepo"]
@@ -333,22 +605,41 @@ subgraph App[Application Modules]
 ```mermaid
 %% Use-case style layout: system boundary with actors left/right and vertical use-cases
 flowchart LR
-  actorUser[(User)]
+  actorUser[(Customer)]
   actorPartner[(Partner)]
   actorAdmin[(Admin)]
 
-  subgraph SystemBoundary["Online Shop System"]
+  subgraph SystemBoundary["Retail E-Commerce System (Checkpoint 3)"]
     direction TB
-    UC1((Register))
-    UC2((Login))
-    UC3((Browse Products))
-    UC4((Search Products))
-    UC5((Add to Cart))
-    UC6((View Cart))
-    UC7((Checkout))
-    UC8((View Receipt))
-    UC9((Partner Catalog Ingest))
-    UC10((Admin Onboard Partner))
+    
+    subgraph CoreUC["Core Shopping"]
+      UC1((Register))
+      UC2((Login))
+      UC3((Browse Products))
+      UC4((Search Products))
+      UC5((Add to Cart))
+      UC6((View Cart))
+      UC7((Checkout))
+      UC8((View Receipt))
+    end
+    
+    subgraph RMAUC["Returns & Refunds"]
+      UC11((Submit RMA))
+      UC12((Upload Photo))
+      UC13((Track RMA Status))
+      UC14((View Store Credit))
+    end
+    
+    subgraph PartnerUC["Partner Integration"]
+      UC9((Partner Catalog Ingest))
+      UC10((Admin Onboard Partner))
+    end
+    
+    subgraph ObservabilityUC["Monitoring & Observability"]
+      UC15((View Monitoring Dashboard))
+      UC16((Check System Health))
+      UC17((Review Audit Logs))
+    end
   end
 
   actorUser --> UC1
@@ -359,11 +650,52 @@ flowchart LR
   actorUser --> UC6
   actorUser --> UC7
   actorUser --> UC8
+  actorUser --> UC11
+  actorUser --> UC12
+  actorUser --> UC13
+  actorUser --> UC14
 
   actorPartner --> UC9
+  
   actorAdmin --> UC10
+  actorAdmin --> UC15
+  actorAdmin --> UC16
+  actorAdmin --> UC17
 
-  style SystemBoundary fill:#fff7e6,stroke:#333,stroke-width:1px
+  style SystemBoundary fill:#fff7e6,stroke:#333,stroke-width:2px
+  style CoreUC fill:#e8f5e9,stroke:#333,stroke-width:1px
+  style RMAUC fill:#fff3e0,stroke:#333,stroke-width:1px
+  style PartnerUC fill:#e3f2fd,stroke:#333,stroke-width:1px
+  style ObservabilityUC fill:#f3e5f5,stroke:#333,stroke-width:1px
 ```
+
+**New Use Cases (Checkpoint 3):**
+- **UC11-UC14**: RMA workflow enabling customers to submit returns, upload evidence, and track disposition
+- **UC15-UC17**: Admin-only observability features for system monitoring and audit review
+
+---
+
+## Summary of Checkpoint 3 Additions
+
+### Deployability
+- **Docker Compose**: Two-container architecture (web + worker) with shared volume
+- **Smart Seeding**: Database seeded only on first startup (data preserved on restarts)
+- **Health Checks**: `/health` endpoint for container orchestration
+- **Environment Configuration**: `APP_DB_PATH`, `SEED_DATA`, `OBSERVABILITY_ENABLED`
+
+### Observability
+- **Metrics Collection**: Hybrid approach (database queries for persistence + in-memory for rates)
+- **Structured Logging**: JSON-formatted logs with request IDs for tracing
+- **Monitoring Dashboard**: Real-time dashboard at `/monitoring/dashboard` with auto-refresh (5s)
+- **Metrics Tracked**: Orders (successful/failed), Refunds (approved/rejected/pending), Errors (4xx/5xx), Performance (P50/P95/P99)
+
+### RMA (Returns & Refunds)
+- **10-Stage Workflow**: SUBMITTED → VALIDATING → APPROVED → SHIPPING → RECEIVED → INSPECTING → INSPECTED → DISPOSITION → PROCESSING → COMPLETED
+- **5 Disposition Types**: REFUND, REPLACEMENT, REPAIR, STORE_CREDIT, REJECT
+- **Photo Evidence**: Customers can upload photos with return requests
+- **Admin Queues**: Separate views for Support, Warehouse, Finance teams
+- **Audit Trail**: Complete history of status transitions and disposition decisions
+- **Store Credit**: Tracks credit balance and redemption
+- **Metrics Integration**: RMA events tracked in observability system
 
 ---

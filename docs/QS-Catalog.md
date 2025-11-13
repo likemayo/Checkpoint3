@@ -1,10 +1,10 @@
-# Quality Scenarios - E-Commerce System (Flash Sales & Partner Integration)
+# Quality Scenarios - E-Commerce System (RMA, Flash Sales, Partner Integration, Observability)
 
-**Project:** Checkpoint 2 - Quality Attributes Implementation  
-**Date:** October 21, 2025  
-**Team:** Flash Sales & Partner Integration Modules
+**Project:** Checkpoint 3 - Quality Attributes Implementation & Monitoring  
+**Date:** November 13, 2025  
+**Team:** Retail System — RMA (Returns), Flash Sales, Partner Integration, Observability
 
-This document specifies all quality attribute scenarios for the complete e-commerce system, covering both Flash Sales and Partner Integration modules.
+This document specifies all quality attribute scenarios for the complete e-commerce system, covering Flash Sales, Partner Integration, RMA (Returns), and Observability modules.
 
 ---
 
@@ -16,7 +16,9 @@ This document specifies all quality attribute scenarios for the complete e-comme
 5. [Integrability Scenarios](#integrability-scenarios) (2 scenarios)
 6. [Testability Scenarios](#testability-scenarios) (2 scenarios)
 7. [Usability Scenarios](#usability-scenarios) (2 scenarios)
-8. [Summary Table](#summary-table)
+8. [Reliability Scenarios](#reliability-scenarios) (2 scenarios)
+9. [Observability Scenarios](#observability-scenarios) (2 scenarios)
+10. [Summary Table](#summary-table)
 
 ---
 
@@ -399,6 +401,108 @@ This document specifies all quality attribute scenarios for the complete e-comme
 
 ---
 
+## Reliability Scenarios
+
+### Scenario R1: RMA Workflow Consistency & Integrity (RMA Module)
+
+| Aspect | Description |
+|--------|-------------|
+| **Source** | Customer submitting or updating an RMA request |
+| **Stimulus** | Multiple RMA requests and updates occur concurrently (submit, validate, approve, disposition, complete) |
+| **Environment** | Normal operation with simultaneous admin actions (Support, Warehouse, Finance) |
+| **Artifact** | RMA workflow routes and DB transactions |
+| **Response** | - Status transitions enforced according to workflow rules<br>- Each transition is atomic with DB transaction boundaries<br>- Inventory, store credit, and refunds remain consistent |
+| **Response Measure** | - 0 illegal status transitions<br>- 0 lost updates under concurrent actions<br>- 100% audit log entries for each state change |
+
+**Architectural Tactics:**
+- Transactions with commit/rollback
+- Status transition validation (state machine rules)
+- Audit logging on each change
+
+**Implementation:**
+- `src/rma/routes.py` — transition endpoints and validation
+- `src/dao.py` — transaction handling
+- Tests: `tests/test_worker_end_to_end.py`, `tests/test_validation.py`
+
+**Module:** RMA (Returns)
+
+---
+
+### Scenario R2: Refund Disposition Accuracy & Auditability (RMA Module)
+
+| Aspect | Description |
+|--------|-------------|
+| **Source** | Finance/Admin setting refund disposition |
+| **Stimulus** | Admin chooses REFUND, REPLACEMENT, REPAIR, STORE_CREDIT, or REJECT |
+| **Environment** | Normal operations; multiple RMAs processed per hour |
+| **Artifact** | Disposition logic and audit table |
+| **Response** | - Disposition stored accurately and reflected in metrics<br>- Store credit and order state updated consistently<br>- Audit row written with who/when/what |
+| **Response Measure** | - 100% of completed RMAs have disposition set<br>- Metrics Approved/Rejected/Pending match DB query results<br>- Audit trail present for 100% of changes |
+
+**Architectural Tactics:**
+- Multi-stage validation before disposition
+- Consistent write + audit trail pattern
+- Metrics instrumentation on disposition
+
+**Implementation:**
+- `src/rma/routes.py` — disposition handling
+- `src/observability/metrics_collector.py` — refunds query logic
+- Tests: `tests/test_audit_entries.py`, `tests/test_testability_integration.py`
+
+**Module:** RMA (Returns)
+
+---
+
+## Observability Scenarios
+
+### Scenario O1: Monitoring Dashboard Accuracy from Persistent Metrics (Observability)
+
+| Aspect | Description |
+|--------|-------------|
+| **Source** | Administrator viewing Monitoring Dashboard |
+| **Stimulus** | Dashboard auto-refreshes every 5 seconds |
+| **Environment** | System recently restarted (in-memory counters reset) |
+| **Artifact** | Metrics aggregator and dashboard view |
+| **Response** | - Orders and Refunds cards use DB-backed counts so values persist across restarts<br>- In-memory rates complement DB counts for freshness |
+| **Response Measure** | - Orders/Refunds totals match database at time of query<br>- No all-zero regressions after restart |
+
+**Architectural Tactics:**
+- Hybrid metrics: DB queries for totals + in-memory for rates
+- Smart seeding (first-run only) to preserve data
+
+**Implementation:**
+- `src/observability/metrics_collector.py` — DB-backed metrics
+- `docker-entrypoint.sh` — seed only if DB empty
+- `src/templates/monitoring/dashboard.html` — admin-only
+
+**Module:** Observability
+
+---
+
+### Scenario O2: Response Time Tracking and Percentiles (Observability)
+
+| Aspect | Description |
+|--------|-------------|
+| **Source** | Any HTTP request |
+| **Stimulus** | Requests flow through Flask app middleware |
+| **Environment** | Normal operation |
+| **Artifact** | Observability middleware and histogram store |
+| **Response** | - Each request duration recorded via after_request middleware<br>- Percentiles (P50/P95/P99) computed from histogram |
+| **Response Measure** | - Non-zero avg and percentiles after generating traffic<br>- P95 available for SLO checks on dashboard |
+
+**Architectural Tactics:**
+- Middleware timing via `before_request`/`after_request`
+- Histogram observations for `http_request_duration_seconds`
+
+**Implementation:**
+- `src/app.py` — after_request metrics observe
+- `src/observability/metrics_collector.py` — histogram stats and percentiles
+- Tests: `tests/test_usability_endpoints.py` — endpoint-level checks
+
+**Module:** Observability
+
+---
+
 ## Summary Table
 
 | Quality Attribute | Scenario ID | Module | Scenario Name | Tactic/Pattern | Implementation |
@@ -417,10 +521,14 @@ This document specifies all quality attribute scenarios for the complete e-comme
 | **Testability** | T2 | Partner | Feed Validation Testing | Unit Testing + Security Testing | `tests/partners/*` |
 | **Usability** | U1 | Flash Sales | Clear Error Feedback | User-Centered Error Handling | Error responses in routes |
 | **Usability** | U2 | Partner | Upload Feedback | User Feedback + Progress Indication | Partner upload UI |
+| **Reliability** | R1 | RMA | RMA Workflow Consistency & Integrity | Transactions + Status Transition Validation | `src/rma/routes.py`, `src/dao.py` |
+| **Reliability** | R2 | RMA | Refund Disposition Accuracy & Audit | Multi-stage Validation + Audit Trail | `src/rma/routes.py`, `src/partners/metrics.py` |
+| **Observability** | O1 | Observability | Dashboard Accuracy from Persistent Metrics | DB-backed Metrics + Smart Seeding | `src/observability/metrics_collector.py`, `docker-entrypoint.sh` |
+| **Observability** | O2 | Observability | Response Time Tracking (P95/P99) | Middleware Timing + Histograms | `src/app.py`, `src/observability/metrics_collector.py` |
 
 ### Tactics Summary
 
-**Total Unique Tactics Implemented: 14**
+**Total Unique Tactics Implemented: 18**
 
 #### Flash Sales Module (6 tactics):
 1. **Rate Limiting** - Sliding window algorithm (Availability & Performance)
@@ -439,6 +547,12 @@ This document specifies all quality attribute scenarios for the complete e-comme
 12. **Asynchronous Processing** - Webhook handling (Integrability)
 13. **Security Testing** - Injection prevention validation (Testability)
 14. **User Feedback** - Upload progress indication (Usability)
+
+#### RMA & Observability (4 tactics):
+15. **Status Transition Validation** - Enforce legal RMA workflow states (Reliability)
+16. **Audit Trail on Changes** - Record who/when/what for disposition/state (Reliability)
+17. **DB-backed Metrics + Smart Seeding** - Persistent counts with first-run-only seed (Observability)
+18. **Middleware Timing + Histograms** - Request duration and percentile tracking (Observability)
 
 ---
 

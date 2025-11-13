@@ -236,8 +236,20 @@
     <div class="header">
         <h1>🔍 System Monitoring Dashboard</h1>
         <p class="subtitle">Real-time metrics and logs | Auto-refresh every 5 seconds</p>
+        <div style="margin-top: 15px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-left: 3px solid #3b82f6;">
+            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-bottom: 8px;">
+                <strong style="color: #60a5fa;">What This Dashboard Monitors:</strong>
+            </p>
+            <ul style="color: #94a3b8; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                <li><strong>Orders:</strong> Total sales transactions. Successful = COMPLETED or REFUNDED status. Shows order processing rate.</li>
+                <li><strong>Refunds/Returns:</strong> RMA (Return Merchandise Authorization) requests. Approved = completed with REFUND/REPLACEMENT/REPAIR/CREDIT. Rejected = completed with REJECT disposition. Pending = actively being processed.</li>
+                <li><strong>Errors:</strong> System errors and HTTP failures. 4xx = client errors (bad requests, auth failures). 5xx = server errors (crashes, database issues).</li>
+                <li><strong>Performance:</strong> HTTP request response times. P95 = 95% of requests complete within this time. P99 = 99th percentile (slowest requests).</li>
+                <li><strong>System Status:</strong> Overall health based on error rate. Degraded if >1 error/second.</li>
+            </ul>
+        </div>
         <div style="margin-top: 12px;">
-            <a href="{{ url_for('products') }}" style="
+            <a href="{{ url_for('admin_home') }}" style="
                 display: inline-block;
                 padding: 10px 16px;
                 background: #3b82f6;
@@ -245,7 +257,7 @@
                 border-radius: 6px;
                 text-decoration: none;
                 font-weight: 600;
-            ">← Back to Products</a>
+            ">← Back to Admin Home</a>
         </div>
     </div>
 

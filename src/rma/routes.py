@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import os
 from .manager import RMAManager
+from src.observability.metrics_collector import metrics_collector
 
 bp = Blueprint("rma", __name__, url_prefix="/rma", template_folder=Path(__file__).parent.joinpath("templates"))
 
@@ -90,6 +91,15 @@ def submit_rma():
 
         status = rma_data["rma"]["status"]
         rma_number = rma_data["rma"].get("rma_number")
+        
+        # Track refund/return metrics
+        metrics_collector.increment_counter('refunds_total')
+        metrics_collector.record_event('refunds_total')
+        if approved:
+            metrics_collector.increment_counter('refunds_total', labels={'status': 'approved'})
+        else:
+            metrics_collector.increment_counter('refunds_total', labels={'status': 'pending'})
+        
         msg = (
             f"RMA validated and approved. Your RMA number is {rma_number}"
             if approved else
@@ -461,6 +471,14 @@ def admin_make_disposition(rma_id: int):
         manager = RMAManager(conn)
         
         manager.make_disposition(rma_id, disposition=disposition, reason=reason, decided_by=decided_by)
+        
+        # Track disposition metrics
+        if disposition == "REFUND":
+            # Count refunds (already counted on submit, this is the approval)
+            pass
+        elif disposition == "REJECT":
+            # Track rejected refunds
+            metrics_collector.increment_counter('refunds_total', labels={'status': 'rejected'})
         
         conn.close()
         

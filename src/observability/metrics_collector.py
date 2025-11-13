@@ -142,6 +142,77 @@ class MetricsCollector:
     
     def get_business_metrics(self) -> Dict:
         """Get business-specific metrics for dashboard."""
+        # Load real data from database if available
+        try:
+            import sqlite3
+            import os
+            
+            db_path = os.environ.get("APP_DB_PATH", "app.sqlite")
+            
+            if os.path.exists(db_path):
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                
+                # Get real order counts from database
+                orders_result = conn.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status IN ('COMPLETED', 'REFUNDED') THEN 1 ELSE 0 END) as successful,
+                        SUM(CASE WHEN status IN ('FAILED', 'CANCELLED') THEN 1 ELSE 0 END) as failed
+                    FROM sale
+                """).fetchone()
+                
+                # Get real refund/RMA counts from database
+                # Approved = COMPLETED with any disposition (REFUND, REPLACEMENT, REPAIR, STORE_CREDIT)
+                # Rejected = COMPLETED with REJECT disposition
+                # Pending = Not COMPLETED or CANCELLED (SUBMITTED, VALIDATED, AUTHORIZED, SHIPPING, INSPECTING, etc.)
+                refunds_result = conn.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'COMPLETED' AND disposition IS NOT NULL AND disposition != 'REJECT' THEN 1 ELSE 0 END) as approved,
+                        SUM(CASE WHEN status = 'COMPLETED' AND disposition = 'REJECT' THEN 1 ELSE 0 END) as rejected,
+                        SUM(CASE WHEN status NOT IN ('COMPLETED', 'CANCELLED') THEN 1 ELSE 0 END) as pending
+                    FROM rma_requests
+                """).fetchone()
+                
+                conn.close()
+                
+                # Combine database data with in-memory counters
+                orders_total = orders_result['total'] if orders_result else 0
+                refunds_total = refunds_result['total'] if refunds_result else 0
+                
+                return {
+                    'orders': {
+                        'total': orders_total,
+                        'successful': orders_result['successful'] if orders_result else 0,
+                        'failed': orders_result['failed'] if orders_result else 0,
+                        'rate_per_minute': self.get_rate('orders_total', window_seconds=60) * 60
+                    },
+                    'refunds': {
+                        'total': refunds_total,
+                        'approved': refunds_result['approved'] if refunds_result else 0,
+                        'rejected': refunds_result['rejected'] if refunds_result else 0,
+                        'pending': refunds_result['pending'] if refunds_result else 0,
+                        'rate_per_day': self.get_rate('refunds_total', window_seconds=86400) * 86400
+                    },
+                    'errors': {
+                        'total': self.get_counter('errors_total'),
+                        'rate_per_minute': self.get_rate('errors_total', window_seconds=60) * 60,
+                        'by_type': {
+                            '4xx': self.get_counter('http_errors', {'type': '4xx'}),
+                            '5xx': self.get_counter('http_errors', {'type': '5xx'})
+                        }
+                    },
+                    'performance': {
+                        'avg_response_time_ms': self.get_histogram_stats('http_request_duration_seconds').get('avg', 0) * 1000,
+                        'p95_response_time_ms': self.get_histogram_stats('http_request_duration_seconds').get('p95', 0) * 1000,
+                        'p99_response_time_ms': self.get_histogram_stats('http_request_duration_seconds').get('p99', 0) * 1000
+                    }
+                }
+        except Exception as e:
+            # Fall back to in-memory counters only
+            pass
+        
         return {
             'orders': {
                 'total': self.get_counter('orders_total'),
